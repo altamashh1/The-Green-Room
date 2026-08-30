@@ -1,0 +1,5 @@
+.env
+greenroom.db
+greenroom.db-shm
+greenroom.db-wal
+node_modules/
