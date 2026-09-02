@@ -653,7 +653,7 @@ app.get('/api/admin/overview', authMiddleware, adminMiddleware, async (req, res)
   });
 });
 
-const APP_VERSION = '2026.09.02.5';
+const APP_VERSION = require('./package.json').version;
 app.get('/api/health', (req, res) => res.json({ ok: true, app: 'green-room', version: APP_VERSION }));
 
 // Serve the browser app from the same local server as the API. This keeps the
