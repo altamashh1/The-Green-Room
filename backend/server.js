@@ -215,7 +215,7 @@ const LEVEL_LABELS = {
   senior: 'senior-level',
   executive: 'executive/leadership-level'
 };
-const SUPPORTED_ROLES = new Set(['Software Engineer','Embedded Software Engineer','Data Analyst', 'Product Manager']);
+const SUPPORTED_ROLES = new Set(['Software Engineer','Embedded Software Engineer','Data Analyst','Product Manager','DevOps Engineer','UX Designer','Business Analyst']);
 const ALLOWED_QUESTION_COUNTS = new Set([3, 5]);
 const MAX_FOLLOWUPS_PER_QUESTION = 1;
 
