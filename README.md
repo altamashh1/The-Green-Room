@@ -8,8 +8,8 @@ Google Gemini, scores each round, and tracks a user's practice history over time
 - **Account system** — signup / login with bcrypt-hashed passwords and JWT sessions (7-day expiry). Expired or invalid tokens drop you back to the login screen automatically.
 - **Adaptive, AI-generated questions** — the interviewer asks one question at a time and decides live, based on your last answer, whether to ask a brief follow-up or move to a new topic. Nothing is pre-scripted.
 - **Voice interaction** — questions are read aloud (Web Speech Synthesis) and answers are transcribed as you speak (Web Speech Recognition). Full keyboard fallback when speech APIs aren't available.
-- **Timed answers with a review step** — 80 seconds to answer each question, then a 30-second window to read back and **edit the transcription** before it's submitted. A long pause ends the answer early.
-- **End interview anytime** — stop the round early and still get feedback on everything answered so far.
+- **Timed answers with a review step** — 100 seconds to answer each question, then a 60-second window to read back and **edit the transcription** before it's submitted. A long pause ends the answer early.
+- **Cancel anytime** — leave a round from the interview screen; nothing is saved and no feedback is generated.
 - **AI-scored feedback** — Gemini scores the round 1–10 with a per-question strength and a specific thing to sharpen. The score is clamped and the response shape is validated server-side.
 - **Download as PDF** — export the feedback report through the browser's print / "Save as PDF" dialog.
 - **Practice history dashboard** — every round is saved; scores are visible at a glance.
