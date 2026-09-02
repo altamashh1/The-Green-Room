@@ -825,7 +825,15 @@
     list.appendChild(wrap);
   }
 
-  function openSetup(){ hideSetupStatus(); el('beginBtn').disabled = false; showStage('setupStage'); }
+  function openSetup(){
+    hideSetupStatus();
+    el('beginBtn').disabled = false;
+    // Pre-select the previous round's choices so "Practice again" is one click.
+    if(state.role) el('roleInput').value = state.role;
+    if(state.level) el('levelSelect').value = state.level;
+    if(state.numQuestions) el('countSelect').value = String(state.numQuestions);
+    showStage('setupStage');
+  }
   el('newInterviewBtn').addEventListener('click', openSetup);
   el('backToDash').addEventListener('click', () => showStage('dashboardStage'));
 
