@@ -1078,7 +1078,7 @@
     }catch(e){}
   }
 
-  function speakText(text, onComplete){
+  function speakText(text, onComplete, speakingLabel){
     if(!('speechSynthesis' in window)){ setOrb('idle'); onComplete(); return; }
     const synth = window.speechSynthesis;
     let done = false;
@@ -1089,7 +1089,7 @@
     utter.rate = 0.9;   // a touch slower — clearer, with a little more spacing
     utter.pitch = 1.0;
     if(preferredVoice) utter.voice = preferredVoice;
-    utter.onstart = () => setOrb('speaking');
+    utter.onstart = () => setOrb('speaking', speakingLabel);
     utter.onend = finish;
     utter.onerror = finish;
     if(synth.speaking || synth.pending) synth.cancel();
@@ -1107,10 +1107,10 @@
     status.textContent = msg;
   }
 
-  function setOrb(mode){
+  function setOrb(mode, label){
     const orb = el('orb'); orb.classList.remove('ai-speaking','listening');
     const status = el('orbStatus');
-    if(mode==='speaking'){ orb.classList.add('ai-speaking'); status.innerHTML='<b>Speaking</b> — listen to the question'; }
+    if(mode==='speaking'){ orb.classList.add('ai-speaking'); status.innerHTML = label || '<b>Speaking</b> — listen to the question'; }
     else if(mode==='listening'){ orb.classList.add('listening'); status.innerHTML='<b>Listening</b> — go ahead'; }
     else status.innerHTML='<b>Ready</b> — take your time';
   }
@@ -1368,7 +1368,7 @@
         setPhaseLabel('<b>Wrapping up</b> — thank you for your time');
         setAnswerControls({ textarea:false, mic:false, submit:false });
         showInterviewStatus('The interviewer is wrapping up…');
-        speakText(joinSpoken(data.acknowledgement, closing), () => finishInterview());
+        speakText(joinSpoken(data.acknowledgement, closing), () => finishInterview(), '<b>Wrapping up</b> — thank you for your time');
         return;
       }
       state.mainQuestionNumber = data.mainQuestionNumber;
