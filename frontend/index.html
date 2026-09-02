@@ -669,6 +669,13 @@
       forceLogout();
       throw new Error(data.error || 'Your session has expired — please log in again.');
     }
+    if(res.status === 429){
+      const secs = Number(res.headers.get('Retry-After'));
+      const wait = Number.isFinite(secs) && secs > 0
+        ? (secs < 90 ? ` Try again in about ${secs} seconds.` : ` Try again in about ${Math.ceil(secs / 60)} minutes.`)
+        : '';
+      throw new Error((data.error || 'Too many requests. Please wait a moment and try again.') + wait);
+    }
     if(!res.ok) throw new Error(data.error || 'Request failed');
     return data;
   }
