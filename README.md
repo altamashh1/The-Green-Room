@@ -26,15 +26,15 @@ Google Gemini, scores each round, and tracks a user's practice history over time
 └─────────────┘                         └──────┬───────┘        └───────────────┘
                                                 │
                                           ┌─────▼──────┐
-                                          │  SQLite DB │
-                                          │ users /    │
-                                          │ sessions   │
+                                          │  libSQL DB │
+                                          │ file / Turso│
+                                          │ users/sessions│
                                           └────────────┘
 ```
 
 - **Frontend**: one vanilla HTML/CSS/JS file, no build step. Landing, auth, dashboard, setup, interview, feedback and admin screens are all stages in `index.html`. Served directly by the backend at `http://localhost:4000`.
 - **Backend**: Node.js + Express — auth, the adaptive interview loop, feedback scoring, session persistence, and the admin overview. Holds the Gemini API key server-side. Sets basic security headers (CSP, `X-Frame-Options`, etc.) and rate-limits the auth and interview routes per IP.
-- **Database**: SQLite via `better-sqlite3` — zero-config, file-based (`backend/greenroom.db`).
+- **Database**: libSQL via `@libsql/client`. Local dev uses a zero-config file (`backend/greenroom.db`); production points `DATABASE_URL`/`DATABASE_AUTH_TOKEN` at a hosted [Turso](https://turso.tech) database so data survives redeploys on ephemeral hosts like Render.
 - **AI**: Google Gemini via the `generateContent` API. Defaults to `gemini-3.5-flash-lite` with a fallback chain.
 
 Keeping the Gemini API key on the backend rather than in the browser is deliberate — it's how you'd do it in production.
@@ -44,7 +44,7 @@ Keeping the Gemini API key on the backend rather than in the browser is delibera
 ```
 green-room/
 ├── backend/
-│   ├── server.js         # Express app: auth, interview, feedback, admin routes + SQLite setup
+│   ├── server.js         # Express app: auth, interview, feedback, admin routes + libSQL setup
 │   ├── package.json
 │   └── .env.example      # copy to .env and fill in your values
 ├── frontend/
@@ -125,7 +125,7 @@ For the full voice experience use Chrome or Edge. Other browsers fall back to ty
 
 - **Backend**: Render, Railway, Fly.io, or a small VPS. Set `GEMINI_API_KEY`, a strong `JWT_SECRET`, `NODE_ENV=production`, and `ALLOWED_ORIGIN`. Because the backend also serves the frontend, deploying the backend alone is enough.
 - **Separate frontend host** (optional): any static host works. Set `API_BASE` near the top of the `<script>` in `index.html` to the deployed backend URL.
-- **Database**: SQLite is fine for a demo. For production scale, move to hosted Postgres — the SQL is simple.
+- **Database**: hosts like Render wipe the local filesystem on every deploy, so the SQLite file would reset. Create a free [Turso](https://turso.tech) database and set `DATABASE_URL` and `DATABASE_AUTH_TOKEN` in the backend environment — the schema is created automatically on first boot. Leave them unset for local development.
 
 ## Possible extensions
 

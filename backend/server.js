@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const Database = require('better-sqlite3');
+const { createClient } = require('@libsql/client');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -77,10 +77,50 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, bucket: 'auth
 const interviewLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, bucket: 'interview' });
 
 // ---------- DATABASE ----------
-const db = new Database(path.join(__dirname, 'greenroom.db'));
-db.pragma('journal_mode = WAL');
+// Backed by libSQL (Turso in production, a local file in dev). DATABASE_URL is
+// the libsql://... URL from Turso; leave it unset locally to use a plain file
+// so the one-click launcher still works with no external service.
+const dbClient = createClient(
+  process.env.DATABASE_URL
+    ? { url: process.env.DATABASE_URL, authToken: process.env.DATABASE_AUTH_TOKEN }
+    : { url: `file:${path.join(__dirname, 'greenroom.db')}` }
+);
 
-db.exec(`
+// A thin async wrapper exposing just the calls this app makes, so the route
+// code reads almost the same as it did with better-sqlite3 (now with `await`).
+function bindArgs(args) {
+  return args.map((v) => (v === undefined ? null : v));
+}
+const db = {
+  async get(sql, ...args) {
+    const r = await dbClient.execute({ sql, args: bindArgs(args) });
+    const row = r.rows[0];
+    if (!row) return undefined;
+    const obj = {};
+    for (const col of r.columns) obj[col] = row[col];
+    return obj;
+  },
+  async all(sql, ...args) {
+    const r = await dbClient.execute({ sql, args: bindArgs(args) });
+    return r.rows.map((row) => {
+      const obj = {};
+      for (const col of r.columns) obj[col] = row[col];
+      return obj;
+    });
+  },
+  async run(sql, ...args) {
+    const r = await dbClient.execute({ sql, args: bindArgs(args) });
+    return {
+      lastInsertRowid: r.lastInsertRowid == null ? undefined : Number(r.lastInsertRowid),
+      changes: r.rowsAffected
+    };
+  },
+  async exec(sql) {
+    await dbClient.executeMultiple(sql);
+  }
+};
+
+const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -103,14 +143,7 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
-`);
-
-// Add the role column for databases created before administrator accounts
-// were introduced. SQLite ignores the column in CREATE TABLE for existing DBs.
-const userColumns = db.prepare('PRAGMA table_info(users)').all();
-if (!userColumns.some((column) => column.name === 'role')) {
-  db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
-}
+`;
 
 // ---------- CONFIG ----------
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -148,14 +181,29 @@ if (IS_PRODUCTION && ADMIN_PASSWORD === 'admin1234') {
   console.warn('WARNING: the default admin password is in use. Set ADMIN_PASSWORD in backend/.env.');
 }
 
-// Seed the requested local administrator once. The password is hashed like
-// every other account and is never returned by the API.
-const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_EMAIL);
-if (!existingAdmin) {
-  const adminHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
-  db.prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)')
-    .run('Administrator', ADMIN_EMAIL, adminHash, 'admin');
-  console.log('Default administrator account created.');
+// Create the schema, run the one-off role-column migration, and seed the local
+// administrator. All async now, so it runs in initDatabase() before listen().
+async function initDatabase() {
+  await db.exec(SCHEMA_SQL);
+
+  // Add the role column for databases created before administrator accounts
+  // were introduced. SQLite ignores the column in CREATE TABLE for existing DBs.
+  const userColumns = await db.all('PRAGMA table_info(users)');
+  if (!userColumns.some((column) => column.name === 'role')) {
+    await db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
+  }
+
+  // Seed the requested local administrator once. The password is hashed like
+  // every other account and is never returned by the API.
+  const existingAdmin = await db.get('SELECT id FROM users WHERE email = ?', ADMIN_EMAIL);
+  if (!existingAdmin) {
+    const adminHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+    await db.run(
+      'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
+      'Administrator', ADMIN_EMAIL, adminHash, 'admin'
+    );
+    console.log('Default administrator account created.');
+  }
 }
 
 const LEVEL_LABELS = {
@@ -316,13 +364,14 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || normalizedEmail.length > 254) {
     return res.status(400).json({ error: 'Enter a valid email address' });
   }
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
+  const existing = await db.get('SELECT id FROM users WHERE email = ?', normalizedEmail);
   if (existing) return res.status(409).json({ error: 'An account with this email already exists' });
 
   const hash = await bcrypt.hash(password, 10);
-  const info = db
-    .prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)')
-    .run(name.trim(), normalizedEmail, hash, 'user');
+  const info = await db.run(
+    'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
+    name.trim(), normalizedEmail, hash, 'user'
+  );
   const user = { id: info.lastInsertRowid, name: name.trim(), email: normalizedEmail, role: 'user' };
   res.json({ token: signToken(user), user });
 });
@@ -331,15 +380,15 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
   const normalizedEmail = String(email).toLowerCase().trim();
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(normalizedEmail);
+  const user = await db.get('SELECT * FROM users WHERE email = ?', normalizedEmail);
   if (!user) return res.status(401).json({ error: 'Invalid email or password' });
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) return res.status(401).json({ error: 'Invalid email or password' });
   res.json({ token: signToken(user), user: publicUser(user) });
 });
 
-app.get('/api/me', authMiddleware, (req, res) => {
-  const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.id);
+app.get('/api/me', authMiddleware, async (req, res) => {
+  const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
   res.json({ user: publicUser(user) });
 });
@@ -521,21 +570,18 @@ The "questions" array must have exactly ${transcript.length} items, in the same 
       }))
     };
 
-    const info = db
-      .prepare(
-        `INSERT INTO sessions (user_id, role, level, type, num_questions, overall_score, overall_summary, transcript_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        req.user.id,
-        role,
-        level,
-        'standard',
-        transcript.length,
-        feedback.overallScore,
-        feedback.overallSummary,
-        JSON.stringify({ transcript, feedback })
-      );
+    const info = await db.run(
+      `INSERT INTO sessions (user_id, role, level, type, num_questions, overall_score, overall_summary, transcript_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      req.user.id,
+      role,
+      level,
+      'standard',
+      transcript.length,
+      feedback.overallScore,
+      feedback.overallSummary,
+      JSON.stringify({ transcript, feedback })
+    );
 
     res.json({ feedback, sessionId: info.lastInsertRowid });
   } catch (e) {
@@ -544,20 +590,19 @@ The "questions" array must have exactly ${transcript.length} items, in the same 
   }
 });
 
-app.get('/api/sessions', authMiddleware, (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT id, role, level, type, num_questions, overall_score, overall_summary, created_at
-       FROM sessions WHERE user_id = ? ORDER BY created_at DESC`
-    )
-    .all(req.user.id);
+app.get('/api/sessions', authMiddleware, async (req, res) => {
+  const rows = await db.all(
+    `SELECT id, role, level, type, num_questions, overall_score, overall_summary, created_at
+     FROM sessions WHERE user_id = ? ORDER BY created_at DESC`,
+    req.user.id
+  );
   res.json({ sessions: rows });
 });
 
-app.get('/api/sessions/:id', authMiddleware, (req, res) => {
+app.get('/api/sessions/:id', authMiddleware, async (req, res) => {
   const id = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid session id' });
-  const row = db.prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(id, req.user.id);
+  const row = await db.get('SELECT * FROM sessions WHERE id = ? AND user_id = ?', id, req.user.id);
   if (!row) return res.status(404).json({ error: 'Session not found' });
   row.transcript_json = JSON.parse(row.transcript_json);
   res.json({ session: row });
@@ -566,36 +611,36 @@ app.get('/api/sessions/:id', authMiddleware, (req, res) => {
 // ---------- ADMIN ROUTES ----------
 // Re-checks the role against the database (not just the token) so a demotion
 // takes effect immediately.
-function adminMiddleware(req, res, next) {
-  const row = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id);
-  if (!row || row.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
-  next();
+async function adminMiddleware(req, res, next) {
+  try {
+    const row = await db.get('SELECT role FROM users WHERE id = ?', req.user.id);
+    if (!row || row.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+    next();
+  } catch (e) {
+    next(e);
+  }
 }
 
-app.get('/api/admin/overview', authMiddleware, adminMiddleware, (req, res) => {
-  const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
-  const sessionCount = db.prepare('SELECT COUNT(*) AS c FROM sessions').get().c;
-  const avg = db.prepare('SELECT AVG(overall_score) AS a FROM sessions WHERE overall_score IS NOT NULL').get().a;
-  const byRole = db
-    .prepare('SELECT role, COUNT(*) AS count, ROUND(AVG(overall_score), 1) AS avgScore FROM sessions GROUP BY role ORDER BY count DESC')
-    .all();
-  const byDay = db
-    .prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM sessions GROUP BY day ORDER BY day DESC LIMIT 14")
-    .all();
-  const recentSessions = db
-    .prepare(
-      `SELECT s.id, s.role, s.level, s.num_questions, s.overall_score, s.created_at, u.email AS user_email
-       FROM sessions s JOIN users u ON u.id = s.user_id
-       ORDER BY s.created_at DESC LIMIT 20`
-    )
-    .all();
-  const recentUsers = db
-    .prepare(
-      `SELECT id, name, email, role, created_at,
-         (SELECT COUNT(*) FROM sessions s WHERE s.user_id = users.id) AS sessions
-       FROM users ORDER BY created_at DESC LIMIT 20`
-    )
-    .all();
+app.get('/api/admin/overview', authMiddleware, adminMiddleware, async (req, res) => {
+  const userCount = (await db.get('SELECT COUNT(*) AS c FROM users')).c;
+  const sessionCount = (await db.get('SELECT COUNT(*) AS c FROM sessions')).c;
+  const avg = (await db.get('SELECT AVG(overall_score) AS a FROM sessions WHERE overall_score IS NOT NULL')).a;
+  const byRole = await db.all(
+    'SELECT role, COUNT(*) AS count, ROUND(AVG(overall_score), 1) AS avgScore FROM sessions GROUP BY role ORDER BY count DESC'
+  );
+  const byDay = await db.all(
+    "SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM sessions GROUP BY day ORDER BY day DESC LIMIT 14"
+  );
+  const recentSessions = await db.all(
+    `SELECT s.id, s.role, s.level, s.num_questions, s.overall_score, s.created_at, u.email AS user_email
+     FROM sessions s JOIN users u ON u.id = s.user_id
+     ORDER BY s.created_at DESC LIMIT 20`
+  );
+  const recentUsers = await db.all(
+    `SELECT id, name, email, role, created_at,
+       (SELECT COUNT(*) FROM sessions s WHERE s.user_id = users.id) AS sessions
+     FROM users ORDER BY created_at DESC LIMIT 20`
+  );
 
   res.json({
     userCount,
@@ -627,7 +672,15 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Green Room is ready at http://localhost:${PORT}`);
-  console.log(`Gemini model chain: ${GEMINI_MODELS.join(' -> ')}`);
-});
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Green Room is ready at http://localhost:${PORT}`);
+      console.log(`Database: ${process.env.DATABASE_URL ? 'libSQL (' + process.env.DATABASE_URL + ')' : 'local file'}`);
+      console.log(`Gemini model chain: ${GEMINI_MODELS.join(' -> ')}`);
+    });
+  })
+  .catch((e) => {
+    console.error('FATAL: could not initialise the database.', e);
+    process.exit(1);
+  });
