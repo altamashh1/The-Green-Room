@@ -580,6 +580,7 @@
     </div>
     <div class="q-breakdown" id="qBreakdown"></div>
     <div class="feedback-actions no-print">
+      <button class="btn btn-primary" id="retryFeedbackBtn" hidden>Try again</button>
       <button class="btn btn-primary" id="dashBtn">Back to dashboard</button>
       <button class="btn btn-ghost" id="againBtn">Practice again</button>
       <button class="btn btn-ghost" id="pdfBtn">Download as PDF</button>
@@ -1413,12 +1414,21 @@
     el('overallSummary').textContent = statusMessage || 'Reviewing your answers…';
     el('scoreNum').innerHTML = '–<span>/10</span>';
     el('qBreakdown').innerHTML = '';
+    el('retryFeedbackBtn').hidden = true;
     if(!state.answers.length){
       stopScoringAnimation();
       el('scoreNum').innerHTML = '0<span>/10</span>';
       el('overallSummary').textContent = 'No answers were recorded before the interview ended.';
       return;
     }
+    requestFeedback();
+  }
+
+  // The feedback call, split out so it can be retried without re-running the
+  // whole interview teardown.
+  async function requestFeedback(){
+    el('retryFeedbackBtn').hidden = true;
+    el('overallSummary').textContent = 'Reviewing your answers…';
     startScoringAnimation();
     try{
       const {feedback} = await api('/api/interview/feedback', {method:'POST', body:{
@@ -1429,9 +1439,11 @@
     }catch(e){
       stopScoringAnimation();
       el('scoreNum').innerHTML = '–<span>/10</span>';
-      el('overallSummary').textContent = "Couldn't generate feedback right now — but nice work finishing the round.";
+      el('overallSummary').textContent = (e.message || "Couldn't generate feedback right now") + ' — your answers are safe, give it another try.';
+      el('retryFeedbackBtn').hidden = false;
     }
   }
+  el('retryFeedbackBtn').addEventListener('click', requestFeedback);
 
   // While the model writes the report, step through a few status lines over a
   // pulsing orb so the page reads as "working" rather than blank.
