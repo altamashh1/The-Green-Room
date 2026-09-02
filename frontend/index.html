@@ -644,9 +644,9 @@
     answerDirty:false, silenceTimer:null,
     isFinishing:false
   };
-  const SILENCE_REVIEW_DELAY_MS = 2500; // pause this long → move to the review/edit step
-  const ANSWER_SECONDS = 80;            // time to speak each answer
-  const REVIEW_SECONDS = 30;            // time to read back / edit before it submits
+  const SILENCE_REVIEW_DELAY_MS = 4000; // pause this long → move to the review/edit step
+  const ANSWER_SECONDS = 100;           // time to speak each answer
+  const REVIEW_SECONDS = 60;            // time to read back / edit before it submits
   const formatMMSS = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   function authHeaders(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer ' + state.token }; }
