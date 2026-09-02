@@ -1010,6 +1010,9 @@
     setPhaseTimer(0);
     setAnswerControls({ textarea:false, mic:false, submit:false });
     const answer = (el('answerInput').value || '').trim() || '(No answer given.)';
+    // Log the question alongside the answer so the running transcript reads as a
+    // full conversation (the big question display above only shows the current one).
+    addToTranscript('Interviewer', state.currentQuestion);
     addToTranscript('You', answer);
     state.answers.push({ question: state.currentQuestion, answer, isFollowUp: state.currentIsFollowUp });
     el('answerInput').value = '';
