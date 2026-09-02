@@ -470,6 +470,8 @@ app.post('/api/interview/next', authMiddleware, interviewLimiter, async (req, re
   const qaBlock = transcript
     .map((a, i) => `Q${i + 1}${a.isFollowUp ? ' (follow-up)' : ''}: ${a.question}\nA${i + 1}: ${a.answer}`)
     .join('\n\n');
+  const askedMainQuestions = transcript.filter((a) => !a.isFollowUp).map((a) => a.question);
+  const askedList = askedMainQuestions.map((q) => `- ${q}`).join('\n');
 
   const instruction = followUpsAllowed
     ? `You may either (a) ask ONE brief, natural follow-up question if the candidate's last answer was vague, missing specifics, or has an interesting detail worth digging into, or (b) move on to a new main question on a different topic. Prefer moving on unless a follow-up would clearly add value.`
@@ -479,7 +481,10 @@ app.post('/api/interview/next', authMiddleware, interviewLimiter, async (req, re
 
 ${qaBlock}
 
-This is main question ${currentMain} of ${total} in the round. ${instruction} If asking a new main question, keep the overall progression from warm-up to more probing questions, and don't repeat topics already covered.
+Main questions already asked in this round — do NOT ask about any of these topics again, not even reworded:
+${askedList}
+
+This is main question ${currentMain} of ${total} in the round. ${instruction} If asking a new main question, it must cover a clearly different area from every question listed above (for a ${role}, draw from areas such as: a specific past project, system/technical design, debugging or troubleshooting, collaboration and code review, testing and reliability, handling disagreement or ambiguity, and learning or growth). Keep the overall progression from warm-up to more probing questions.
 
 Return ONLY raw JSON (no markdown fences, no preamble) in exactly this shape:
 {
