@@ -170,7 +170,7 @@
   .status-line.ok{color:var(--sage);}
   .modal-actions{display:flex; gap:12px; margin-top:22px; flex-wrap:wrap;}
   .modal-actions .btn{flex:1; justify-content:center; min-width:120px;}
-  .interview-topbar #quitInterviewBtn{color:var(--coral); border-color:rgba(193,102,107,.4);}
+  #quitInterviewBtn{color:var(--coral); border-color:rgba(193,102,107,.4);}
   .end-btn{width:100%; justify-content:center; margin-top:20px; padding:12px 18px; font-size:11px;}
   .answer-box{margin-top:20px; border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
   .answer-head{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;}
@@ -524,7 +524,6 @@
   <div class="stage" id="interviewStage">
     <div class="interview-topbar">
       <div class="brand">The Green <span>Room</span></div>
-      <button class="btn btn-ghost btn-sm" id="quitInterviewBtn" title="Discard this interview and return to the dashboard">Cancel &amp; exit</button>
     </div>
     <div class="stage-grid">
       <div class="side-panel">
@@ -533,7 +532,7 @@
         <div class="progress-track" id="progressTrack"></div>
         <div class="timer" id="timerDisplay">--:--</div>
         <div class="timer-label" id="timerLabel">get ready</div>
-        <button class="btn btn-ghost end-btn" id="endInterviewBtn">End &amp; get feedback</button>
+        <button class="btn btn-ghost end-btn" id="quitInterviewBtn" title="Discard this interview and return to the dashboard">Cancel &amp; exit</button>
       </div>
       <div class="main-stage">
         <div class="orb-row">
@@ -875,17 +874,6 @@
     setPhaseTimer(0);
     renderQuestion();
   }
-
-  el('endInterviewBtn').addEventListener('click', () => {
-    if(state.isFinishing) return;
-    const answered = state.answers.length;
-    if(!answered){
-      window.alert('Answer at least one question first, or use "Cancel & exit" to leave without feedback.');
-      return;
-    }
-    if(!window.confirm(`End the interview now and get feedback on your ${answered} answered question${answered > 1 ? 's' : ''}?`)) return;
-    finishInterview('');
-  });
 
   // Abandon the round entirely — no feedback, nothing saved — and return to the
   // dashboard. For when you started the wrong interview by mistake.
