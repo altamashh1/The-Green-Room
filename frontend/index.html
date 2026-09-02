@@ -121,8 +121,9 @@
 
   /* feedback */
   .score-card{background:linear-gradient(135deg, var(--ink-soft), var(--ink-softer)); border:1px solid var(--line-strong); border-radius:var(--radius); padding:36px; margin-top:8px; display:flex; gap:32px; align-items:center; flex-wrap:wrap;}
-  .score-num{font-family:var(--font-display); font-size:64px; color:var(--amber); line-height:1;}
+  .score-num{font-family:var(--font-display); font-size:64px; color:var(--amber); line-height:1; flex-shrink:0;}
   .score-num span{font-size:26px; color:var(--parchment-dim);}
+  .score-text{flex:1 1 320px; min-width:0;}
   .score-text h3{font-family:var(--font-display); font-size:20px; margin-bottom:8px; font-weight:500;}
   .score-text p{color:var(--parchment-dim); font-size:14.5px; line-height:1.6;}
   .q-breakdown{margin-top:32px; display:flex; flex-direction:column; gap:16px;}
