@@ -143,6 +143,9 @@ const SCHEMA_SQL = `
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_created ON sessions(user_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
 `;
 
 // ---------- CONFIG ----------
