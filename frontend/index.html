@@ -88,8 +88,8 @@
   .progress-item.current{color:var(--parchment);}
   .timer{font-family:var(--font-mono); font-size:26px; color:var(--parchment);}
   .timer-label{font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--parchment-dim); margin-top:2px;}
-  .main-stage{background:var(--ink-soft); border:1px solid var(--line); border-radius:var(--radius); padding:32px; display:flex; flex-direction:column;}
-  .orb-row{display:flex; align-items:center; gap:22px; margin-bottom:22px;}
+  .main-stage{background:var(--ink-soft); border:1px solid var(--line); border-radius:var(--radius); padding:26px 32px; display:flex; flex-direction:column;}
+  .orb-row{display:flex; align-items:center; gap:22px; margin-bottom:14px;}
   .orb{position:relative; width:64px; height:64px; flex-shrink:0;}
   .orb-core{position:absolute; inset:20px; border-radius:50%; background:var(--ink-softer); border:1px solid var(--line-strong); transition:background .2s ease;}
   .orb-ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line-strong); opacity:0;}
@@ -100,9 +100,10 @@
   @keyframes ripple{0%{transform:scale(.55); opacity:.7;} 100%{transform:scale(1.35); opacity:0;}}
   .orb-status{font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--parchment-dim);}
   .orb-status b{color:var(--parchment); font-weight:500;}
-  .q-count{font-family:var(--font-mono); font-size:12px; color:var(--amber); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px;}
-  .q-text{font-family:var(--font-display); font-size:clamp(21px,2.6vw,27px); line-height:1.35; margin-bottom:26px; max-width:56ch;}
-  .transcript{flex:1; max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding:4px 4px 18px 0; margin-bottom:18px; border-bottom:1px solid var(--line);}
+  .q-count{font-family:var(--font-mono); font-size:12px; color:var(--amber); letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px;}
+  .q-text{font-family:var(--font-display); font-size:clamp(21px,2.6vw,27px); line-height:1.3; margin-bottom:16px; max-width:56ch;}
+  .transcript{flex:1; max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding:4px 4px 12px 0; margin-bottom:12px; border-bottom:1px solid var(--line);}
+  .transcript:empty{display:none;}
   .transcript:empty{display:none; border-bottom:none; margin-bottom:0;}
   .t-item{font-size:14px; line-height:1.5;}
   .t-role{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--parchment-dim); margin-bottom:4px;}
@@ -172,7 +173,7 @@
   .modal-actions .btn{flex:1; justify-content:center; min-width:120px;}
   #quitInterviewBtn{color:var(--coral); border-color:rgba(193,102,107,.4);}
   .end-btn{width:100%; justify-content:center; margin-top:20px; padding:12px 18px; font-size:11px;}
-  .answer-box{margin-top:20px; border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
+  .answer-box{margin-top:12px; border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
   .answer-head{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;}
   .phase-label{font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--parchment-dim);}
   .phase-label b{color:var(--parchment); font-weight:500;}
@@ -556,7 +557,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14171F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
           </div>
-          <div class="answer-hint" id="answerHint">You get 80 seconds to answer, then 30 seconds to review and edit before it's submitted.</div>
+          <div class="answer-hint" id="answerHint"></div>
           <div class="status-line" id="interviewStatus" style="display:none;"></div>
         </div>
       </div>
@@ -647,6 +648,7 @@
   const SILENCE_REVIEW_DELAY_MS = 4000; // pause this long → move to the review/edit step
   const ANSWER_SECONDS = 100;           // time to speak each answer
   const REVIEW_SECONDS = 60;            // time to read back / edit before it submits
+  el('answerHint').textContent = `You get ${ANSWER_SECONDS} seconds to answer, then ${REVIEW_SECONDS} seconds to review and edit before it's submitted.`;
   const formatMMSS = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   function authHeaders(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer ' + state.token }; }
