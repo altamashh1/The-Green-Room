@@ -1327,10 +1327,15 @@
   // Asks the backend to decide the next turn: a follow-up on what was just
   // said, or a fresh main question — then speaks whichever it picks.
   const MAX_NEXT_TURN_RETRIES = 3;
+  const MAX_FOLLOWUPS_PER_QUESTION = 1; // keep in sync with backend/server.js
   async function fetchNextTurn(attempt = 0){
     if(state.isFinishing) return;
     setOrb('idle');
-    showInterviewStatus('The interviewer is thinking of the next question…', false);
+    // On the last main question with no follow-up left, the next turn ends the
+    // interview — tell the candidate we're scoring, not queuing another question.
+    const lastTurn = state.mainQuestionNumber >= state.numQuestions
+      && (state.currentIsFollowUp || state.followUpsUsed >= MAX_FOLLOWUPS_PER_QUESTION);
+    showInterviewStatus(lastTurn ? 'Calculating your results…' : 'The interviewer is thinking of the next question…', false);
     try{
       const data = await api('/api/interview/next', {method:'POST', body:{
         role: state.role, level: state.level, numQuestions: state.numQuestions,
