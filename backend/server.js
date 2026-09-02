@@ -200,7 +200,7 @@ async function initDatabase() {
     const adminHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
     await db.run(
       'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-      'Administrator', ADMIN_EMAIL, adminHash, 'admin'
+      'Admin', ADMIN_EMAIL, adminHash, 'admin'
     );
     console.log('Default administrator account created.');
   }

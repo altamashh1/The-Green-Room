@@ -475,7 +475,7 @@
   <div class="stage" id="dashboardStage">
     <div class="topbar">
       <div class="brand">The Green <span>Room</span></div>
-      <div class="user-chip"><span id="userName"></span><span class="nav-link" id="adminLink" style="display:none;">Admin</span><span class="logout-link" id="logoutLink">Log out</span></div>
+      <div class="user-chip"><span id="userName"></span><span class="nav-link" id="adminLink" style="display:none;">Admin panel</span><span class="logout-link" id="logoutLink">Log out</span></div>
     </div>
     <div class="dash-head">
       <div>
@@ -590,7 +590,7 @@
   <!-- ADMIN -->
   <div class="stage" id="adminStage">
     <div class="topbar">
-      <div class="brand">The Green <span>Room</span> · Admin</div>
+      <div class="brand">The Green <span>Room</span> · Admin panel</div>
       <div class="user-chip"><span class="nav-link" id="adminBackLink">← Dashboard</span><span class="logout-link" id="adminLogout">Log out</span></div>
     </div>
     <div class="eyebrow">Admin panel</div>
@@ -745,8 +745,9 @@
 
   // ---------- DASHBOARD ----------
   async function enterDashboard(){
-    el('userName').textContent = state.user ? state.user.name : '';
-    el('adminLink').style.display = state.user && state.user.role === 'admin' ? 'inline' : 'none';
+    const isAdmin = !!(state.user && state.user.role === 'admin');
+    el('userName').textContent = (state.user && !isAdmin) ? state.user.name : '';
+    el('adminLink').style.display = isAdmin ? 'inline' : 'none';
     showStage('dashboardStage');
     try{
       const {sessions} = await api('/api/sessions');
