@@ -17,6 +17,7 @@
     --font-display:'Fraunces', serif; --font-body:'Inter', sans-serif; --font-mono:'IBM Plex Mono', monospace;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
+  [hidden]{display:none !important;}
   html,body{height:100%;}
   body{
     background:
@@ -134,6 +135,25 @@
   .qb-tag.improve{background:rgba(193,102,107,.16); color:var(--coral); border:1px solid rgba(193,102,107,.35);}
   .feedback-actions{display:flex; gap:14px; margin-top:36px; margin-bottom:20px; flex-wrap:wrap;}
   .print-only{display:none;}
+
+  /* feedback — scoring animation while the report is generated */
+  .fb-loading{display:flex; flex-direction:column; align-items:center; gap:22px; padding:72px 24px 64px; text-align:center;}
+  .fb-orb{position:relative; width:72px; height:72px;}
+  .fb-orb span{position:absolute; inset:0; border-radius:50%; border:1px solid var(--amber); opacity:0; animation:fbRipple 2.1s ease-out infinite;}
+  .fb-orb span:nth-child(2){animation-delay:.7s;}
+  .fb-orb span:nth-child(3){animation-delay:1.4s;}
+  .fb-orb::after{content:''; position:absolute; inset:25px; border-radius:50%; background:var(--amber); box-shadow:0 0 22px rgba(232,163,61,.55); animation:fbPulse 2.1s ease-in-out infinite;}
+  @keyframes fbRipple{0%{transform:scale(.5); opacity:.7;} 100%{transform:scale(1.3); opacity:0;}}
+  @keyframes fbPulse{0%,100%{transform:scale(.82); opacity:.8;} 50%{transform:scale(1.04); opacity:1;}}
+  .fb-load-status{font-family:var(--font-mono); font-size:13px; letter-spacing:.03em; color:var(--parchment-dim); min-height:1.3em; transition:opacity .3s ease;}
+  .fb-load-bar{width:min(260px,72%); height:3px; border-radius:3px; background:var(--line); overflow:hidden;}
+  .fb-load-bar i{display:block; width:38%; height:100%; border-radius:3px; background:var(--amber); animation:fbSlide 1.5s ease-in-out infinite;}
+  @keyframes fbSlide{0%{transform:translateX(-110%);} 100%{transform:translateX(370%);}}
+  .reveal-in{animation:fbReveal .5s ease both;}
+  @keyframes fbReveal{from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);}}
+  @media (prefers-reduced-motion: reduce){
+    .fb-orb span,.fb-orb::after,.fb-load-bar i,.reveal-in{animation:none;}
+  }
 
   /* answer box (interview) */
   .interview-topbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; gap:14px;}
@@ -550,7 +570,12 @@
     <h1>Here's how it went.</h1>
     <p class="sub" id="feedbackSub">Honest notes on your round — what landed, and what to sharpen before the real thing.</p>
     <div class="print-only" id="printHeader"></div>
-    <div class="score-card">
+    <div class="fb-loading no-print" id="feedbackLoading" hidden>
+      <div class="fb-orb"><span></span><span></span><span></span></div>
+      <div class="fb-load-status" id="fbLoadStatus">Reading through your transcript…</div>
+      <div class="fb-load-bar"><i></i></div>
+    </div>
+    <div class="score-card" id="scoreCard">
       <div class="score-num" id="scoreNum">–<span>/10</span></div>
       <div class="score-text"><h3>Overall impression</h3><p id="overallSummary">Loading feedback…</p></div>
     </div>
@@ -1386,22 +1411,78 @@
     el('scoreNum').innerHTML = '–<span>/10</span>';
     el('qBreakdown').innerHTML = '';
     if(!state.answers.length){
+      stopScoringAnimation();
       el('scoreNum').innerHTML = '0<span>/10</span>';
       el('overallSummary').textContent = 'No answers were recorded before the interview ended.';
       return;
     }
+    startScoringAnimation();
     try{
       const {feedback} = await api('/api/interview/feedback', {method:'POST', body:{
         role: state.role, level: state.level, transcript: state.answers
       }});
+      stopScoringAnimation();
       renderFeedback(feedback);
     }catch(e){
+      stopScoringAnimation();
+      el('scoreNum').innerHTML = '–<span>/10</span>';
       el('overallSummary').textContent = "Couldn't generate feedback right now — but nice work finishing the round.";
     }
   }
 
+  // While the model writes the report, step through a few status lines over a
+  // pulsing orb so the page reads as "working" rather than blank.
+  const SCORING_LINES = [
+    'Reading through your transcript…',
+    'Weighing structure, clarity, and specifics…',
+    'Measuring your answers against a strong bar for the role…',
+    'Marking what you did well…',
+    'Writing your sharpening notes…',
+    'Putting the report together…'
+  ];
+  let scoringTimer = null;
+  function startScoringAnimation(){
+    clearInterval(scoringTimer);
+    el('scoreCard').hidden = true;
+    el('qBreakdown').hidden = true;
+    el('feedbackLoading').hidden = false;
+    let i = 0;
+    const line = el('fbLoadStatus');
+    line.style.opacity = '1';
+    line.textContent = SCORING_LINES[0];
+    scoringTimer = window.setInterval(() => {
+      i = Math.min(i + 1, SCORING_LINES.length - 1);
+      line.style.opacity = '0';
+      window.setTimeout(() => { line.textContent = SCORING_LINES[i]; line.style.opacity = '1'; }, 300);
+    }, 2400);
+  }
+  function stopScoringAnimation(){
+    clearInterval(scoringTimer);
+    scoringTimer = null;
+    el('feedbackLoading').hidden = true;
+    el('scoreCard').hidden = false;
+    el('qBreakdown').hidden = false;
+  }
+  // Count the score up from 0 with an ease-out so the reveal has a beat to it.
+  function animateScore(target){
+    const node = el('scoreNum');
+    if(target == null){ node.innerHTML = '–<span>/10</span>'; return; }
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      node.innerHTML = `${target}<span>/10</span>`; return;
+    }
+    const dur = 900, t0 = performance.now();
+    (function tick(now){
+      const p = Math.min(1, (now - t0) / dur);
+      const val = Math.round(target * p * (2 - p));
+      node.innerHTML = `${val}<span>/10</span>`;
+      if(p < 1) requestAnimationFrame(tick);
+    })(performance.now());
+  }
+
   function renderFeedback(feedback){
-    el('scoreNum').innerHTML = `${feedback.overallScore ?? '–'}<span>/10</span>`;
+    el('scoreCard').classList.remove('reveal-in'); void el('scoreCard').offsetWidth;
+    el('scoreCard').classList.add('reveal-in');
+    animateScore(feedback.overallScore ?? null);
     el('overallSummary').textContent = feedback.overallSummary || 'No summary was returned for this round.';
     const levelText = el('levelSelect').selectedOptions[0] ? el('levelSelect').selectedOptions[0].textContent : state.level;
     el('printHeader').textContent =
@@ -1410,7 +1491,8 @@
     state.answers.forEach((a,i) => {
       const fb = (feedback.questions && feedback.questions[i]) || {strength:'', improvement:''};
       const item = document.createElement('div');
-      item.className = 'qb-item';
+      item.className = 'qb-item reveal-in';
+      item.style.animationDelay = `${120 + i * 90}ms`;
       item.innerHTML = `
         <div class="qb-num">Question ${i+1}</div>
         <div class="qb-q">${escapeHtml(a.question)}</div>
