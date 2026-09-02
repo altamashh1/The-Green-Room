@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# env / secrets
+.env
+*.env
+!.env.example
+
+# database
+backend/greenroom.db
+backend/greenroom.db-shm
+backend/greenroom.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# logs / os
+*.log
+.DS_Store
+Thumbs.db

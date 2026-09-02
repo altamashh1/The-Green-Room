@@ -115,8 +115,6 @@
   .send-btn{width:52px; height:52px; border-radius:9px; flex-shrink:0; padding:0; justify-content:center;}
   .action-row{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
   .mute-toggle{font-family:var(--font-mono); font-size:11.5px; color:var(--parchment-dim); display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;}
-  .voice-answer-status{margin-top:18px; padding:14px 16px; border:1px solid var(--line); border-radius:9px; font-family:var(--font-mono); font-size:11.5px; color:var(--parchment-dim);}
-  .voice-answer-status .status-line{margin-top:7px;}
 
   /* feedback */
   .score-card{background:linear-gradient(135deg, var(--ink-soft), var(--ink-softer)); border:1px solid var(--line-strong); border-radius:var(--radius); padding:36px; margin-top:8px; display:flex; gap:32px; align-items:center; flex-wrap:wrap;}
@@ -134,9 +132,86 @@
   .qb-tag{font-family:var(--font-mono); font-size:10.5px; padding:4px 10px; border-radius:20px; white-space:nowrap; letter-spacing:.04em;}
   .qb-tag.strong{background:rgba(124,148,115,.16); color:var(--sage); border:1px solid rgba(124,148,115,.35);}
   .qb-tag.improve{background:rgba(193,102,107,.16); color:var(--coral); border:1px solid rgba(193,102,107,.35);}
-  .feedback-actions{display:flex; gap:14px; margin-top:36px; margin-bottom:20px;}
+  .feedback-actions{display:flex; gap:14px; margin-top:36px; margin-bottom:20px; flex-wrap:wrap;}
+  .print-only{display:none;}
+
+  /* answer box (interview) */
+  .interview-topbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; gap:14px;}
+
+  /* mic check modal */
+  .modal-overlay{position:fixed; inset:0; background:rgba(9,11,15,.74); display:flex; align-items:center; justify-content:center; padding:20px; z-index:60;}
+  .modal-overlay[hidden]{display:none;}
+  .modal{background:var(--ink-soft); border:1px solid var(--line-strong); border-radius:var(--radius); padding:32px; max-width:460px; width:100%;}
+  .modal h3{font-family:var(--font-display); font-weight:500; font-size:21px; margin:6px 0 10px;}
+  .modal p{font-size:14px; color:var(--parchment-dim); line-height:1.6;}
+  .mic-sentence{font-family:var(--font-display); font-size:17px; color:var(--parchment); background:var(--ink); border:1px solid var(--line); border-radius:9px; padding:14px 16px; margin:16px 0;}
+  .mic-meter{height:10px; border-radius:6px; background:var(--ink); border:1px solid var(--line-strong); overflow:hidden; margin:18px 0 4px;}
+  .mic-meter-fill{height:100%; width:0; background:var(--sage); transition:width .08s linear;}
+  .status-line.ok{color:var(--sage);}
+  .modal-actions{display:flex; gap:12px; margin-top:22px; flex-wrap:wrap;}
+  .modal-actions .btn{flex:1; justify-content:center; min-width:120px;}
+  .interview-topbar #quitInterviewBtn{color:var(--coral); border-color:rgba(193,102,107,.4);}
+  .end-btn{width:100%; justify-content:center; margin-top:20px; padding:12px 18px; font-size:11px;}
+  .answer-box{margin-top:20px; border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
+  .answer-head{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;}
+  .phase-label{font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--parchment-dim);}
+  .phase-label b{color:var(--parchment); font-weight:500;}
+  .answer-timer{font-family:var(--font-mono); font-size:15px; color:var(--parchment); min-width:52px; text-align:right;}
+  .answer-timer.warn{color:var(--coral);}
+  .answer-box textarea{width:100%; min-height:96px;}
+  .answer-box .input-row{margin-top:12px;}
+  .answer-hint{font-family:var(--font-mono); font-size:11px; color:var(--parchment-dim); margin-top:10px; line-height:1.5;}
+
+  /* admin */
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:24px 0 8px;}
+  .stat{background:var(--ink-soft); border:1px solid var(--line); border-radius:var(--radius); padding:20px;}
+  .stat-num{font-family:var(--font-display); font-size:28px; color:var(--amber); line-height:1;}
+  .stat-label{font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--parchment-dim); margin-top:8px;}
+  .admin-h2{font-family:var(--font-display); font-weight:500; font-size:20px; margin:34px 0 6px;}
+  .table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); margin-top:12px;}
+  table.data{width:100%; border-collapse:collapse; font-size:13px; min-width:520px;}
+  table.data th{font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--parchment-dim); text-align:left; padding:11px 14px; border-bottom:1px solid var(--line-strong); white-space:nowrap;}
+  table.data td{padding:11px 14px; border-bottom:1px solid var(--line); color:var(--parchment-dim); white-space:nowrap;}
+  table.data tr:last-child td{border-bottom:none;}
+  .session-item.clickable{cursor:pointer; transition:border-color .15s ease;}
+  .session-item.clickable:hover{border-color:var(--line-strong);}
 
   ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:4px;}
+
+  /* mobile */
+  @media (max-width:600px){
+    .app{padding:24px 16px 56px;}
+    .card{padding:22px;}
+    .topbar{flex-wrap:wrap; gap:10px;}
+    .dash-head{flex-direction:column; align-items:stretch;}
+    .dash-head .btn{width:100%; justify-content:center;}
+    .session-item{flex-direction:row; align-items:center; padding:16px 18px;}
+    .main-stage{padding:22px;}
+    .orb-row{gap:16px; margin-bottom:18px;}
+    .orb{width:52px; height:52px;}
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .feedback-actions .btn{width:100%; justify-content:center;}
+    .score-card{padding:24px; gap:18px;}
+    .score-num{font-size:52px;}
+    .nav-links{display:none;}
+    .hero-cta .btn{width:100%; justify-content:center;}
+  }
+  @media (max-width:820px){
+    .stage-grid .side-panel{order:2;}
+    .stage-grid .progress-track{flex-direction:row; flex-wrap:wrap; gap:8px 16px;}
+  }
+
+  /* print — turns the feedback screen into a clean PDF via the browser's Save as PDF */
+  @media print{
+    :root{--ink:#fff; --ink-soft:#fff; --ink-softer:#fff; --parchment:#111; --parchment-dim:#444; --line:#ddd; --line-strong:#bbb; --amber:#a86b16;}
+    body{background:#fff !important;}
+    .app{max-width:none; padding:0;}
+    .stage{display:none !important;}
+    .stage#feedbackStage{display:block !important;}
+    .no-print{display:none !important;}
+    .print-only{display:block; margin-bottom:16px; font-family:var(--font-mono); font-size:12px; color:#444;}
+    .score-card,.qb-item{box-shadow:none; break-inside:avoid;}
+  }
 
   /* landing */
   .landing-app{max-width:1180px; margin:0 auto;}
@@ -237,7 +312,7 @@
           </div>
           <div class="trust-row">
             <div class="trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Adaptive follow-up questions</div>
-            <div class="trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Speak naturally, no typing</div>
+            <div class="trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Speak your answers, edit if needed</div>
             <div class="trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Track your score over time</div>
           </div>
         </div>
@@ -302,8 +377,8 @@
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8A33D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
-            <h3>Timed, realistic rounds</h3>
-            <p>A time budget per round keeps you thinking on your feet instead of over-rehearsing every word.</p>
+            <h3>Timed answers, then a review</h3>
+            <p>80 seconds to answer keeps you thinking on your feet — then 30 seconds to read back and fix the transcript before it's submitted.</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C9473" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 15l4-4 4 4 4-6"/></svg></div>
@@ -379,7 +454,7 @@
   <div class="stage" id="dashboardStage">
     <div class="topbar">
       <div class="brand">The Green <span>Room</span></div>
-      <div class="user-chip"><span id="userName"></span><span class="logout-link" id="logoutLink">Log out</span></div>
+      <div class="user-chip"><span id="userName"></span><span class="nav-link" id="adminLink" style="display:none;">Admin</span><span class="logout-link" id="logoutLink">Log out</span></div>
     </div>
     <div class="dash-head">
       <div>
@@ -408,7 +483,7 @@
           <select id="roleInput">
             <option value="" selected disabled>Select a role</option>
             <option value="Software Engineer">Software Engineer</option>
-            <option value="Software Engineer">Embedded Software Engineer</option>
+            <option value="Embedded Software Engineer">Embedded Software Engineer</option>
             <option value="Data Analyst">Data Analyst</option>
             <option value="Product Manager">Product Manager</option>
           </select>
@@ -427,13 +502,18 @@
 
   <!-- INTERVIEW -->
   <div class="stage" id="interviewStage">
+    <div class="interview-topbar">
+      <div class="brand">The Green <span>Room</span></div>
+      <button class="btn btn-ghost btn-sm" id="quitInterviewBtn" title="Discard this interview and return to the dashboard">Cancel &amp; exit</button>
+    </div>
     <div class="stage-grid">
       <div class="side-panel">
         <div class="side-title">Now interviewing for</div>
         <div class="side-role" id="sideRole">—</div>
         <div class="progress-track" id="progressTrack"></div>
-        <div class="timer" id="timerDisplay">00:00</div>
-        <div class="timer-label">time remaining</div>
+        <div class="timer" id="timerDisplay">--:--</div>
+        <div class="timer-label" id="timerLabel">get ready</div>
+        <button class="btn btn-ghost end-btn" id="endInterviewBtn">End &amp; get feedback</button>
       </div>
       <div class="main-stage">
         <div class="orb-row">
@@ -443,8 +523,21 @@
         <div class="q-count" id="qCount">Question 1 of 5</div>
         <div class="q-text" id="qText">Loading your first question…</div>
         <div class="transcript" id="transcript"></div>
-        <div class="voice-answer-status">
-          Voice answers start automatically after each question. Speak naturally, then pause when you are finished. The interview allows two minutes per question.
+        <div class="answer-box">
+          <div class="answer-head">
+            <span class="phase-label" id="phaseLabel"><b>Preparing</b> — listen to the question</span>
+            <span class="answer-timer" id="answerTimer"></span>
+          </div>
+          <textarea id="answerInput" placeholder="Your spoken answer appears here — edit it if the transcription is off, then submit." disabled></textarea>
+          <div class="input-row">
+            <button class="mic-btn" id="micBtn" title="Start / stop recording" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4M8 22h8"/></svg>
+            </button>
+            <button class="btn btn-primary send-btn" id="submitBtn" title="Submit answer" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14171F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+          <div class="answer-hint" id="answerHint">You get 80 seconds to answer, then 30 seconds to review and edit before it's submitted.</div>
           <div class="status-line" id="interviewStatus" style="display:none;"></div>
         </div>
       </div>
@@ -453,17 +546,53 @@
 
   <!-- FEEDBACK -->
   <div class="stage" id="feedbackStage">
-    <div class="eyebrow">Debrief</div>
+    <div class="eyebrow no-print">Debrief</div>
     <h1>Here's how it went.</h1>
     <p class="sub" id="feedbackSub">Honest notes on your round — what landed, and what to sharpen before the real thing.</p>
+    <div class="print-only" id="printHeader"></div>
     <div class="score-card">
       <div class="score-num" id="scoreNum">–<span>/10</span></div>
       <div class="score-text"><h3>Overall impression</h3><p id="overallSummary">Loading feedback…</p></div>
     </div>
     <div class="q-breakdown" id="qBreakdown"></div>
-    <div class="feedback-actions">
+    <div class="feedback-actions no-print">
       <button class="btn btn-primary" id="dashBtn">Back to dashboard</button>
       <button class="btn btn-ghost" id="againBtn">Practice again</button>
+      <button class="btn btn-ghost" id="pdfBtn">Download as PDF</button>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="stage" id="adminStage">
+    <div class="topbar">
+      <div class="brand">The Green <span>Room</span> · Admin</div>
+      <div class="user-chip"><span class="nav-link" id="adminBackLink">← Dashboard</span><span class="logout-link" id="adminLogout">Log out</span></div>
+    </div>
+    <div class="eyebrow">Admin panel</div>
+    <h1 style="font-size:clamp(26px,3.4vw,36px);">Platform overview</h1>
+    <div class="stat-grid" id="adminStats"></div>
+    <h2 class="admin-h2">Recent interviews</h2>
+    <div class="table-wrap"><table class="data" id="adminSessions"></table></div>
+    <h2 class="admin-h2">Recent users</h2>
+    <div class="table-wrap"><table class="data" id="adminUsers"></table></div>
+    <div class="status-line" id="adminStatus" style="display:none;"></div>
+  </div>
+
+  <!-- MIC CHECK -->
+  <div class="modal-overlay" id="micModal" hidden>
+    <div class="modal">
+      <div class="eyebrow">Before we start</div>
+      <h3 id="micTitle">Quick microphone check</h3>
+      <p>The interview is spoken, so let's make sure we can hear you. When you're ready, press <b>Begin speaking</b> and read this sentence out loud:</p>
+      <div class="mic-sentence" id="micSentence">"The quick brown fox jumps over the lazy dog."</div>
+      <div class="mic-meter" id="micMeter" hidden><div class="mic-meter-fill" id="micMeterFill"></div></div>
+      <div class="status-line" id="micStatus" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="micStartBtn">Begin speaking</button>
+        <button class="btn btn-primary" id="micProceedBtn" style="display:none;">Start interview</button>
+        <button class="btn btn-ghost" id="micRetryBtn" style="display:none;">Retry</button>
+        <button class="btn btn-ghost" id="micCancelBtn">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -477,7 +606,7 @@
     : ''; // set your deployed backend URL here in production
 
   const el = id => document.getElementById(id);
-  const stages = ['landingStage','authStage','dashboardStage','setupStage','interviewStage','feedbackStage'];
+  const stages = ['landingStage','authStage','dashboardStage','setupStage','interviewStage','feedbackStage','adminStage'];
   function showStage(id){ stages.forEach(s => el(s).classList.toggle('active', s === id)); if(id !== 'interviewStage') window.scrollTo({top:0}); }
 
   const state = {
@@ -486,15 +615,23 @@
     role:'', level:'', numQuestions:3,
     currentQuestion:'', currentIsFollowUp:false,
     mainQuestionNumber:1, followUpsUsed:0, answers:[],
-    startTime:null, deadline:null, timerInterval:null,
-    listening:false, recognition:null, voiceAnswer:'', silenceTimer:null, noSpeechTimer:null,
+    phase:'idle', phaseInterval:null, phaseDeadline:0, phaseExpire:null,
+    listening:false, recognition:null, voiceAnswer:'', committedAnswer:'',
+    answerDirty:false, silenceTimer:null,
     isFinishing:false
   };
-  const SILENCE_SUBMIT_DELAY_MS = 2500;
-  const NO_SPEECH_PROMPT_DELAY_MS = 8000;
-  const SECONDS_PER_QUESTION = 120;
+  const SILENCE_REVIEW_DELAY_MS = 2500; // pause this long → move to the review/edit step
+  const ANSWER_SECONDS = 80;            // time to speak each answer
+  const REVIEW_SECONDS = 30;            // time to read back / edit before it submits
+  const formatMMSS = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   function authHeaders(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer ' + state.token }; }
+
+  function forceLogout(){
+    state.token = null; state.user = null;
+    localStorage.removeItem('gr_token'); localStorage.removeItem('gr_user');
+    showStage('authStage');
+  }
 
   async function api(path, opts = {}){
     const res = await fetch(API_BASE + path, {
@@ -503,6 +640,10 @@
       body: opts.body ? JSON.stringify(opts.body) : undefined
     });
     const data = await res.json().catch(() => ({}));
+    if(res.status === 401 && !path.startsWith('/api/auth/')){
+      forceLogout();
+      throw new Error(data.error || 'Your session has expired — please log in again.');
+    }
     if(!res.ok) throw new Error(data.error || 'Request failed');
     return data;
   }
@@ -566,20 +707,63 @@
     enterDashboard();
   }
 
-  el('logoutLink').addEventListener('click', () => {
+  function doLogout(){
     state.token = null; state.user = null;
     localStorage.removeItem('gr_token'); localStorage.removeItem('gr_user');
     showStage('landingStage');
-  });
+  }
+  el('logoutLink').addEventListener('click', doLogout);
+  el('adminLogout').addEventListener('click', doLogout);
+  el('adminLink').addEventListener('click', enterAdmin);
+  el('adminBackLink').addEventListener('click', enterDashboard);
 
   // ---------- DASHBOARD ----------
   async function enterDashboard(){
     el('userName').textContent = state.user ? state.user.name : '';
+    el('adminLink').style.display = state.user && state.user.role === 'admin' ? 'inline' : 'none';
     showStage('dashboardStage');
     try{
       const {sessions} = await api('/api/sessions');
       renderSessions(sessions);
     }catch(e){ renderSessions([]); }
+  }
+
+  // ---------- ADMIN ----------
+  async function enterAdmin(){
+    showStage('adminStage');
+    const status = el('adminStatus'); status.style.display = 'none';
+    try{
+      renderAdmin(await api('/api/admin/overview'));
+    }catch(e){
+      status.style.display = 'flex'; status.className = 'status-line err';
+      status.textContent = e.message || 'Could not load the admin overview.';
+    }
+  }
+
+  function renderAdmin(d){
+    const stats = [
+      ['Users', d.userCount],
+      ['Interviews', d.sessionCount],
+      ['Avg score', d.avgScore ?? '–'],
+      ['Top role', (d.byRole[0] && d.byRole[0].role) || '–']
+    ];
+    el('adminStats').innerHTML = stats
+      .map(([label, val]) => `<div class="stat"><div class="stat-num">${escapeHtml(String(val))}</div><div class="stat-label">${label}</div></div>`)
+      .join('');
+
+    const fmtDate = s => new Date(s).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+    el('adminSessions').innerHTML =
+      '<tr><th>ID</th><th>User</th><th>Role</th><th>Level</th><th>Qs</th><th>Score</th><th>Date</th></tr>' +
+      d.recentSessions.map(s => `<tr>
+        <td>${s.id}</td><td>${escapeHtml(s.user_email)}</td><td>${escapeHtml(s.role)}</td>
+        <td>${escapeHtml(s.level)}</td><td>${s.num_questions}</td>
+        <td>${s.overall_score ?? '–'}</td><td>${fmtDate(s.created_at)}</td></tr>`).join('');
+
+    el('adminUsers').innerHTML =
+      '<tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Interviews</th><th>Joined</th></tr>' +
+      d.recentUsers.map(u => `<tr>
+        <td>${u.id}</td><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td>
+        <td>${escapeHtml(u.role)}</td><td>${u.sessions}</td><td>${fmtDate(u.created_at)}</td></tr>`).join('');
   }
 
   function renderSessions(sessions){
@@ -607,13 +791,21 @@
     list.appendChild(wrap);
   }
 
-  el('newInterviewBtn').addEventListener('click', () => showStage('setupStage'));
+  function openSetup(){ hideSetupStatus(); el('beginBtn').disabled = false; showStage('setupStage'); }
+  el('newInterviewBtn').addEventListener('click', openSetup);
   el('backToDash').addEventListener('click', () => showStage('dashboardStage'));
 
   function escapeHtml(str){ const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
 
   // ---------- SETUP ----------
-  el('beginBtn').addEventListener('click', beginInterview);
+  el('beginBtn').addEventListener('click', () => {
+    if(!el('roleInput').value.trim()) return showSetupStatus('Choose a role before we begin.', true);
+    primeSpeech();
+    let micOk = false;
+    try{ micOk = sessionStorage.getItem('gr_mic_ok') === '1'; }catch(e){}
+    if(micOk) beginInterview();
+    else micCheck.run(beginInterview);   // interview only starts if the mic test passes
+  });
 
   async function beginInterview(){
     const role = el('roleInput').value.trim();
@@ -631,6 +823,7 @@
       state.currentQuestion = question; state.currentIsFollowUp = false;
       state.mainQuestionNumber = 1; state.followUpsUsed = 0; state.answers = [];
       el('transcript').innerHTML = '';
+      hideSetupStatus();
       startInterviewUI();
     }catch(e){
       showSetupStatus(e.message || 'Could not start the interview.', true);
@@ -644,19 +837,74 @@
     s.style.display='flex'; s.className='status-line'+(isErr?' err':'');
     s.innerHTML=(loading?'<div class="spinner"></div>':'')+msg;
   }
+  function hideSetupStatus(){ el('setupStatus').style.display = 'none'; el('setupStatus').innerHTML = ''; }
 
   // ---------- INTERVIEW ----------
   function startInterviewUI(){
     showStage('interviewStage');
     el('sideRole').textContent = state.role;
     buildProgressTrack();
-    state.startTime = Date.now();
-    state.deadline = state.startTime + state.numQuestions * SECONDS_PER_QUESTION * 1000;
     state.isFinishing = false;
-    clearInterval(state.timerInterval);
-    state.timerInterval = setInterval(updateTimer, 1000);
-    updateTimer();
+    state.phase = 'idle';
+    el('answerInput').value = '';
+    setPhaseTimer(0);
     renderQuestion();
+  }
+
+  el('endInterviewBtn').addEventListener('click', () => {
+    if(state.isFinishing) return;
+    const answered = state.answers.length;
+    if(!answered){
+      window.alert('Answer at least one question first, or use "Cancel & exit" to leave without feedback.');
+      return;
+    }
+    if(!window.confirm(`End the interview now and get feedback on your ${answered} answered question${answered > 1 ? 's' : ''}?`)) return;
+    finishInterview('');
+  });
+
+  // Abandon the round entirely — no feedback, nothing saved — and return to the
+  // dashboard. For when you started the wrong interview by mistake.
+  el('quitInterviewBtn').addEventListener('click', () => {
+    if(state.isFinishing) return;
+    if(!window.confirm('Cancel this interview and go back to the dashboard? Nothing is saved and you will not get feedback.')) return;
+    state.isFinishing = true;
+    state.phase = 'idle';
+    clearInterval(state.phaseInterval);
+    clearTimeout(state.silenceTimer);
+    stopListening();
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    state.answers = [];
+    el('transcript').innerHTML = '';
+    enterDashboard();
+  });
+
+  // ---- per-question phase timer (answer window, then review window) ----
+  function setPhaseTimer(seconds, onExpire){
+    clearInterval(state.phaseInterval);
+    state.phaseExpire = onExpire || null;
+    if(!seconds){
+      el('answerTimer').textContent = '';
+      el('timerDisplay').textContent = '--:--';
+      return;
+    }
+    state.phaseDeadline = Date.now() + seconds * 1000;
+    tickPhaseTimer();
+    state.phaseInterval = setInterval(tickPhaseTimer, 250);
+  }
+
+  function tickPhaseTimer(){
+    const remain = Math.max(0, Math.ceil((state.phaseDeadline - Date.now()) / 1000));
+    const text = formatMMSS(remain);
+    el('answerTimer').textContent = text;
+    el('answerTimer').classList.toggle('warn', remain <= 10);
+    el('timerDisplay').textContent = text;
+    el('timerLabel').textContent = state.phase === 'reviewing' ? 'review time left'
+      : state.phase === 'answering' ? 'answer time left' : 'time';
+    if(remain <= 0){
+      clearInterval(state.phaseInterval);
+      const fn = state.phaseExpire; state.phaseExpire = null;
+      if(fn) fn();
+    }
   }
 
   function buildProgressTrack(){
@@ -679,11 +927,11 @@
     }
   }
 
-  function updateTimer(){
-    const secs = Math.max(0, Math.ceil((state.deadline-Date.now())/1000));
-    const m=String(Math.floor(secs/60)).padStart(2,'0'), s=String(secs%60).padStart(2,'0');
-    el('timerDisplay').textContent = `${m}:${s}`;
-    if(secs === 0) finishInterview('Time is up — submitting the answers recorded so far.');
+  function setPhaseLabel(html){ el('phaseLabel').innerHTML = html; }
+  function setAnswerControls({ textarea, mic, submit }){
+    el('answerInput').disabled = !textarea;
+    el('micBtn').disabled = !mic;
+    el('submitBtn').disabled = !submit;
   }
 
   // acknowledgement (optional): a short spoken reaction to the candidate's
@@ -692,16 +940,76 @@
   function renderQuestion(acknowledgement){
     stopListening();
     updateProgress();
+    state.phase = 'speaking';
+    setPhaseTimer(0);
+    state.voiceAnswer = ''; state.committedAnswer = ''; state.answerDirty = false;
+    el('answerInput').value = '';
+    setAnswerControls({ textarea:false, mic:false, submit:false });
     const q = state.currentQuestion;
     el('qCount').textContent = state.currentIsFollowUp
       ? `Follow-up · Question ${state.mainQuestionNumber} of ${state.numQuestions}`
       : `Question ${state.mainQuestionNumber} of ${state.numQuestions}`;
     el('qText').textContent = q;
     if(acknowledgement) addToTranscript('Interviewer', acknowledgement);
+    setPhaseLabel('<b>Preparing</b> — listen to the question');
     showInterviewStatus('The question is being read aloud…');
-    const spoken = acknowledgement ? `${acknowledgement} ${q}` : q;
-    speakText(spoken, startListening);
+    speakText(joinSpoken(acknowledgement, q), beginAnswerPhase);
   }
+
+  // Answer window: mic is live, transcript streams into the textarea, and an
+  // 80-second countdown runs. A long pause (or the timer) moves to the review step.
+  function beginAnswerPhase(){
+    if(state.isFinishing || state.phase !== 'speaking') return;
+    state.phase = 'answering';
+    state.voiceAnswer = ''; state.committedAnswer = ''; state.answerDirty = false;
+    el('answerInput').value = '';
+    setAnswerControls({ textarea:true, mic:true, submit:true });
+    setPhaseLabel('<b>Answering</b> — speak now, or type');
+    setPhaseTimer(ANSWER_SECONDS, () => { stopListening(); beginReviewPhase(); });
+    startListening();
+    if(!state.recognition){
+      showInterviewStatus('Voice input is not available here — type your answer, then submit.');
+    }
+  }
+
+  // Review window: mic is off, the candidate can edit the transcription, and a
+  // 30-second countdown runs before the answer is submitted automatically.
+  function beginReviewPhase(){
+    if(state.isFinishing || state.phase === 'reviewing' || state.phase === 'thinking') return;
+    state.phase = 'reviewing';
+    stopListening();
+    if(!state.answerDirty) el('answerInput').value = state.voiceAnswer;
+    setAnswerControls({ textarea:true, mic:false, submit:true });
+    setPhaseLabel('<b>Review &amp; edit</b> — submitting soon');
+    showInterviewStatus('Check the text below, fix anything the transcription got wrong, then submit.');
+    el('answerInput').focus();
+    setPhaseTimer(REVIEW_SECONDS, submitCurrentAnswer);
+  }
+
+  function submitCurrentAnswer(){
+    if(state.isFinishing || state.phase === 'thinking') return;
+    state.phase = 'thinking';
+    clearInterval(state.phaseInterval);
+    clearTimeout(state.silenceTimer);
+    stopListening();
+    setPhaseTimer(0);
+    setAnswerControls({ textarea:false, mic:false, submit:false });
+    const answer = (el('answerInput').value || '').trim() || '(No answer given.)';
+    addToTranscript('You', answer);
+    state.answers.push({ question: state.currentQuestion, answer, isFollowUp: state.currentIsFollowUp });
+    el('answerInput').value = '';
+    fetchNextTurn();
+  }
+
+  el('submitBtn').addEventListener('click', submitCurrentAnswer);
+  el('answerInput').addEventListener('input', () => {
+    if(state.phase === 'answering' || state.phase === 'reviewing') state.answerDirty = true;
+  });
+  el('micBtn').addEventListener('click', () => {
+    if(state.phase !== 'answering' || !state.recognition) return;
+    if(state.listening){ stopListening(); beginReviewPhase(); }
+    else { state.answerDirty = false; startListening(); }
+  });
 
   function addToTranscript(role, text){
     const t = el('transcript');
@@ -711,15 +1019,69 @@
     t.appendChild(item); t.scrollTop = t.scrollHeight;
   }
 
+  // Pick a natural English voice once the list is available (it loads async).
+  let preferredVoice = null;
+  function pickVoice(){
+    const voices = window.speechSynthesis.getVoices() || [];
+    preferredVoice =
+      voices.find(v => /en[-_]US/i.test(v.lang) && /google/i.test(v.name)) ||
+      voices.find(v => /en[-_](US|GB)/i.test(v.lang)) ||
+      voices.find(v => /^en/i.test(v.lang)) || null;
+  }
+  if('speechSynthesis' in window){
+    pickVoice();
+    window.speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  // Dashes and ellipses make the speech engine pause awkwardly — swap them for
+  // plain spaces so questions are read as one smooth sentence.
+  function prepareForSpeech(text){
+    return String(text)
+      .replace(/\s*(—|–|--|\.\.\.|…)\s*/g, ' ')
+      .replace(/\s*-\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Joins a spoken acknowledgement to the question with a real sentence break so
+  // the engine takes a natural breath between them.
+  function joinSpoken(ack, main){
+    if(!ack) return main;
+    const a = ack.trim();
+    return a + (/[.!?…]$/.test(a) ? ' ' : '. ') + main;
+  }
+
+  // Nudge the speech engine awake on a user gesture. The first utterance after an
+  // idle period otherwise loses its opening word in Chrome.
+  function primeSpeech(){
+    if(!('speechSynthesis' in window)) return;
+    try{
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
   function speakText(text, onComplete){
     if(!('speechSynthesis' in window)){ setOrb('idle'); onComplete(); return; }
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 1.0;
+    const synth = window.speechSynthesis;
+    let done = false;
+    const finish = () => { if(done) return; done = true; setOrb('idle'); onComplete(); };
+    // A leading comma gives the engine a beat before the first real word, which
+    // stops Chrome from clipping it.
+    const utter = new SpeechSynthesisUtterance(', ' + prepareForSpeech(text));
+    utter.rate = 0.9;   // a touch slower — clearer, with a little more spacing
+    utter.pitch = 1.0;
+    if(preferredVoice) utter.voice = preferredVoice;
     utter.onstart = () => setOrb('speaking');
-    utter.onend = () => { setOrb('idle'); onComplete(); };
-    utter.onerror = () => { setOrb('idle'); onComplete(); };
-    window.speechSynthesis.speak(utter);
+    utter.onend = finish;
+    utter.onerror = finish;
+    if(synth.speaking || synth.pending) synth.cancel();
+    // Chrome swallows the first word(s) if speak() runs too soon after cancel().
+    setTimeout(() => {
+      try{ synth.speak(utter); synth.resume(); }catch(e){ finish(); }
+    }, 300);
+    setTimeout(finish, 120000); // safety net if onend never fires
   }
 
   function showInterviewStatus(msg, isErr=false){
@@ -738,100 +1100,235 @@
   }
 
   const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let finalTranscript = '';
   if(SpeechRecognitionCtor){
     state.recognition = new SpeechRecognitionCtor();
     state.recognition.continuous = true; state.recognition.interimResults = true; state.recognition.lang = 'en-US';
-    let finalTranscript = '';
+
     state.recognition.onstart = () => {
       finalTranscript = '';
-      state.voiceAnswer = '';
       state.listening = true;
       setOrb('listening');
-      showInterviewStatus('Listening… speak your answer.');
-      clearTimeout(state.noSpeechTimer);
-      state.noSpeechTimer = window.setTimeout(handleNoSpeech, NO_SPEECH_PROMPT_DELAY_MS);
+      el('micBtn').classList.add('recording');
+      showInterviewStatus('Listening… speak your answer. It appears below as you talk.');
     };
     state.recognition.onresult = (evt) => {
-      let interim='';
-      for(let i=evt.resultIndex; i<evt.results.length; i++){
+      let interim = '';
+      for(let i = evt.resultIndex; i < evt.results.length; i++){
         const piece = evt.results[i][0].transcript;
-        if(evt.results[i].isFinal) finalTranscript += piece+' '; else interim += piece;
+        if(evt.results[i].isFinal) finalTranscript += piece + ' '; else interim += piece;
       }
-      state.voiceAnswer = (finalTranscript+interim).trim();
-      clearTimeout(state.noSpeechTimer);
-      scheduleVoiceSubmission();
+      const combined = [state.committedAnswer, finalTranscript, interim].join(' ').replace(/\s+/g, ' ').trim();
+      state.voiceAnswer = combined;
+      if(!state.answerDirty) el('answerInput').value = combined;
+      scheduleReviewTransition();
     };
     state.recognition.onerror = (event) => {
-      state.listening = false;
-      clearVoiceTimers();
-      setOrb('idle');
       const denied = event.error === 'not-allowed' || event.error === 'service-not-allowed';
-      showInterviewStatus(denied ? 'Allow microphone access, then start a new interview.' : 'I could not hear an answer. Listening again…', denied);
-      if(!denied) window.setTimeout(startListening, 800);
+      state.listening = false;
+      el('micBtn').classList.remove('recording');
+      setOrb('idle');
+      if(denied){
+        showInterviewStatus('Microphone access is blocked — type your answer below instead.', true);
+        try{ sessionStorage.removeItem('gr_mic_ok'); }catch(e){}
+        return;
+      }
+      if(state.phase === 'answering') window.setTimeout(() => startListening(), 700);
     };
     state.recognition.onend = () => {
+      el('micBtn').classList.remove('recording');
       if(!state.listening) return;
       state.listening = false;
       setOrb('idle');
-      if(state.voiceAnswer.trim()) scheduleVoiceSubmission();
-      else {
-        clearTimeout(state.noSpeechTimer);
-        showInterviewStatus('I have not heard an answer yet. Listening again…');
-        window.setTimeout(startListening, 800);
-      }
+      // The engine stops itself after a pause; keep listening for the rest of
+      // the answer window unless the candidate has moved on.
+      state.committedAnswer = [state.committedAnswer, finalTranscript].join(' ').replace(/\s+/g, ' ').trim();
+      finalTranscript = '';
+      if(state.committedAnswer) state.voiceAnswer = state.committedAnswer;
+      if(!state.answerDirty && state.committedAnswer) el('answerInput').value = state.committedAnswer;
+      if(state.phase === 'answering') window.setTimeout(() => startListening(), 400);
     };
   } else {
-    window.setTimeout(() => showInterviewStatus('Voice input is not supported here. Please use Chrome or Edge.', true), 0);
+    window.setTimeout(() => showInterviewStatus('Voice input is not supported in this browser — you can type your answers. Chrome or Edge give the full voice experience.', true), 0);
   }
 
-  function clearVoiceTimers(){
-    clearTimeout(state.silenceTimer);
-    clearTimeout(state.noSpeechTimer);
-    state.silenceTimer = null;
-    state.noSpeechTimer = null;
-  }
+  // ---------- MIC PRE-FLIGHT CHECK ----------
+  // A blocking dialog shown before the interview: a live input-level meter plus a
+  // spoken-sentence test. The interview only starts once we've actually heard the
+  // candidate, so a muted or misconfigured mic can't reach the interview screen.
+  const micCheck = (function(){
+    let stream = null, audioCtx = null, analyser = null, rafId = null, rec = null, timeoutId = null;
+    let sawAudio = false, passed = false, onPassCb = null;
 
-  function scheduleVoiceSubmission(){
+    function setStatus(msg, kind){
+      const s = el('micStatus');
+      s.style.display = 'flex';
+      s.className = 'status-line' + (kind === 'err' ? ' err' : kind === 'ok' ? ' ok' : '');
+      s.textContent = msg;
+    }
+    function buttons({ start = false, proceed = false, retry = false }){
+      el('micStartBtn').style.display = start ? 'inline-flex' : 'none';
+      el('micProceedBtn').style.display = proceed ? 'inline-flex' : 'none';
+      el('micRetryBtn').style.display = retry ? 'inline-flex' : 'none';
+    }
+
+    function cleanup(){
+      if(rafId) cancelAnimationFrame(rafId);
+      if(timeoutId) clearTimeout(timeoutId);
+      rafId = timeoutId = null;
+      if(rec){ try{ rec.onresult = rec.onerror = rec.onend = null; rec.abort(); }catch(e){} rec = null; }
+      if(audioCtx){ try{ audioCtx.close(); }catch(e){} audioCtx = null; }
+      if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+      analyser = null;
+      el('micMeterFill').style.width = '0%';
+      el('micMeter').hidden = true;
+    }
+
+    function failMessage(){
+      if(sawAudio) setStatus('We picked up sound but could not make out the words. Speak clearly and a little louder, then retry.', 'err');
+      else setStatus('We did not hear anything. Check your microphone is unmuted and selected as the input device, then retry.', 'err');
+      buttons({ retry:true });
+    }
+
+    function succeed(){
+      passed = true;
+      if(timeoutId) clearTimeout(timeoutId);
+      try{ rec.stop(); }catch(e){}
+      cleanup();
+      setStatus('Heard you clearly — you may proceed.', 'ok');
+      buttons({ proceed:true });
+      try{ sessionStorage.setItem('gr_mic_ok', '1'); }catch(e){}
+    }
+
+    async function start(){
+      passed = false; sawAudio = false;
+      buttons({});
+      el('micMeter').hidden = false;
+      el('micMeterFill').style.width = '0%';
+
+      setStatus('Allow microphone access if your browser asks…');
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      }catch(err){
+        const name = err && err.name;
+        if(name === 'NotAllowedError' || name === 'SecurityError'){
+          setStatus('Microphone access is blocked. Click the lock icon in the address bar → Microphone → Allow, then Retry.', 'err');
+        }else if(name === 'NotFoundError' || name === 'DevicesNotFoundError'){
+          setStatus('No microphone found. Connect one and Retry.', 'err');
+        }else{
+          setStatus('Could not open the microphone. Check it is connected and not in use by another app, then Retry.', 'err');
+        }
+        buttons({ retry:true });
+        return;
+      }
+
+      // live level meter
+      try{
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') await audioCtx.resume();
+        const srcNode = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        srcNode.connect(analyser);
+        const bufLen = analyser.fftSize;
+        const buf = new Uint8Array(bufLen);
+        (function loop(){
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          for(let i = 0; i < bufLen; i++){ const x = (buf[i] - 128) / 128; sum += x * x; }
+          const rms = Math.sqrt(sum / bufLen);
+          if(rms > 0.045) sawAudio = true;
+          el('micMeterFill').style.width = Math.min(100, Math.round(rms * 320)) + '%';
+          rafId = requestAnimationFrame(loop);
+        })();
+      }catch(e){ /* meter is a nicety; the sentence test still gates */ }
+
+      // spoken-sentence test
+      setStatus('Listening — read the sentence above out loud now.');
+      rec = new SpeechRecognitionCtor();
+      rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
+      let heard = '';
+      rec.onresult = (e) => {
+        heard = '';
+        for(let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript + ' ';
+        if(heard.trim().split(/\s+/).filter(Boolean).length >= 3) succeed();
+      };
+      rec.onerror = (e) => {
+        if(passed) return;
+        if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+          setStatus('Microphone access is blocked for speech. Allow it in the address bar, then Retry.', 'err');
+          buttons({ retry:true });
+        }else{
+          failMessage();
+        }
+      };
+      rec.onend = () => { if(!passed) failMessage(); };
+      try{ rec.start(); }catch(e){ failMessage(); }
+
+      timeoutId = setTimeout(() => { if(!passed){ try{ rec.stop(); }catch(e){} } }, 15000);
+    }
+
+    el('micStartBtn').addEventListener('click', () => { primeSpeech(); start(); });
+    el('micRetryBtn').addEventListener('click', () => { cleanup(); start(); });
+    el('micCancelBtn').addEventListener('click', () => { cleanup(); el('micModal').hidden = true; });
+    el('micProceedBtn').addEventListener('click', () => {
+      cleanup();
+      el('micModal').hidden = true;
+      if(onPassCb) onPassCb();
+    });
+
+    return {
+      run(onPass){
+        onPassCb = onPass;
+        passed = false;
+        el('micMeter').hidden = true;
+        el('micMeterFill').style.width = '0%';
+        el('micModal').hidden = false;
+
+        if(!SpeechRecognitionCtor){
+          setStatus('Voice interviews need Google Chrome or Microsoft Edge on desktop.', 'err');
+          buttons({});
+          return;
+        }
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext){
+          setStatus('Microphone access needs a secure (https) connection.', 'err');
+          buttons({});
+          return;
+        }
+        setStatus('Read the sentence above, then press Begin speaking.');
+        buttons({ start:true });
+      }
+    };
+  })();
+
+  function scheduleReviewTransition(){
     clearTimeout(state.silenceTimer);
     state.silenceTimer = window.setTimeout(() => {
-      const answer = state.voiceAnswer.trim();
-      if(answer) submitAnswer(answer);
-    }, SILENCE_SUBMIT_DELAY_MS);
-  }
-
-  function handleNoSpeech(){
-    if(!state.listening || state.voiceAnswer.trim() || state.isFinishing) return;
-    showInterviewStatus('I have not heard an answer yet. Please begin when you are ready.');
-    state.listening = false;
-    try{ state.recognition.stop(); }catch(e){}
-    window.setTimeout(startListening, 1000);
+      if(state.phase === 'answering' && (state.voiceAnswer.trim() || el('answerInput').value.trim())){
+        beginReviewPhase();
+      }
+    }, SILENCE_REVIEW_DELAY_MS);
   }
 
   function startListening(){
-    if(!state.recognition || state.listening || state.isFinishing) return;
+    if(!state.recognition || state.listening || state.isFinishing || state.phase !== 'answering') return;
     try { state.recognition.start(); }
-    catch(e) { showInterviewStatus('Microphone is getting ready…'); }
+    catch(e) { /* start() throws if it is already starting — ignore */ }
   }
   function stopListening(){
-    clearVoiceTimers();
-    if(!state.listening) return;
-    state.listening=false;
+    clearTimeout(state.silenceTimer);
+    el('micBtn').classList.remove('recording');
+    if(!state.recognition || !state.listening) return;
+    state.listening = false;
     setOrb('idle');
     try{ state.recognition.stop(); }catch(e){}
   }
 
-  function submitAnswer(answer){
-    if(state.listening) stopListening();
-    if(!answer) return;
-    clearVoiceTimers();
-    addToTranscript('You', answer);
-    state.answers.push({question: state.currentQuestion, answer, isFollowUp: state.currentIsFollowUp});
-    fetchNextTurn();
-  }
-
   // Asks the backend to decide the next turn: a follow-up on what was just
   // said, or a fresh main question — then speaks whichever it picks.
-  async function fetchNextTurn(){
+  const MAX_NEXT_TURN_RETRIES = 3;
+  async function fetchNextTurn(attempt = 0){
+    if(state.isFinishing) return;
     setOrb('idle');
     showInterviewStatus('The interviewer is thinking of the next question…', false);
     try{
@@ -840,11 +1337,15 @@
         mainQuestionNumber: state.mainQuestionNumber, followUpsUsed: state.followUpsUsed,
         transcript: state.answers
       }});
+      if(state.isFinishing) return; // interview was cancelled while this was in flight
       if(data.done){
-        if(data.acknowledgement){
-          addToTranscript('Interviewer', data.acknowledgement);
-          speakText(data.acknowledgement, () => finishInterview());
-        } else finishInterview();
+        const closing = "That's everything I wanted to cover. Thank you for taking the time to interview today. Your feedback report is ready, and you can review it now.";
+        if(data.acknowledgement) addToTranscript('Interviewer', data.acknowledgement);
+        addToTranscript('Interviewer', closing);
+        setPhaseLabel('<b>Wrapping up</b> — thank you for your time');
+        setAnswerControls({ textarea:false, mic:false, submit:false });
+        showInterviewStatus('The interviewer is wrapping up…');
+        speakText(joinSpoken(data.acknowledgement, closing), () => finishInterview());
         return;
       }
       state.mainQuestionNumber = data.mainQuestionNumber;
@@ -853,8 +1354,13 @@
       state.currentIsFollowUp = data.type === 'followup';
       renderQuestion(data.acknowledgement);
     }catch(e){
-      showInterviewStatus(e.message || 'Could not get the next question. Retrying…', true);
-      window.setTimeout(fetchNextTurn, 1500);
+      if(attempt + 1 < MAX_NEXT_TURN_RETRIES){
+        showInterviewStatus((e.message || 'Could not get the next question') + ' — retrying…', true);
+        window.setTimeout(() => fetchNextTurn(attempt + 1), 1500);
+      } else {
+        showInterviewStatus((e.message || 'Could not get the next question') + ' — wrapping up the round.', true);
+        finishInterview('The interview was cut short by a connection problem, but here is feedback on what you answered.');
+      }
     }
   }
 
@@ -862,16 +1368,21 @@
   async function finishInterview(statusMessage=''){
     if(state.isFinishing) return;
     state.isFinishing = true;
-    clearInterval(state.timerInterval);
+    state.phase = 'idle';
+    clearInterval(state.phaseInterval);
+    clearTimeout(state.silenceTimer);
     stopListening();
-    window.speechSynthesis.cancel();
+    setPhaseTimer(0);
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
     showStage('feedbackStage');
+    el('printHeader').textContent = '';
+    el('feedbackSub').textContent = 'Honest notes on your round — what landed, and what to sharpen before the real thing.';
     el('overallSummary').textContent = statusMessage || 'Reviewing your answers…';
     el('scoreNum').innerHTML = '–<span>/10</span>';
     el('qBreakdown').innerHTML = '';
     if(!state.answers.length){
       el('scoreNum').innerHTML = '0<span>/10</span>';
-      el('overallSummary').textContent = 'No spoken answers were recorded before the interview ended.';
+      el('overallSummary').textContent = 'No answers were recorded before the interview ended.';
       return;
     }
     try{
@@ -885,8 +1396,11 @@
   }
 
   function renderFeedback(feedback){
-    el('scoreNum').innerHTML = `${feedback.overallScore}<span>/10</span>`;
-    el('overallSummary').textContent = feedback.overallSummary;
+    el('scoreNum').innerHTML = `${feedback.overallScore ?? '–'}<span>/10</span>`;
+    el('overallSummary').textContent = feedback.overallSummary || 'No summary was returned for this round.';
+    const levelText = el('levelSelect').selectedOptions[0] ? el('levelSelect').selectedOptions[0].textContent : state.level;
+    el('printHeader').textContent =
+      `The Green Room — ${state.role} (${levelText}) · ${state.answers.length} questions · ${new Date().toLocaleDateString(undefined,{month:'long', day:'numeric', year:'numeric'})}`;
     const wrap = el('qBreakdown'); wrap.innerHTML = '';
     state.answers.forEach((a,i) => {
       const fb = (feedback.questions && feedback.questions[i]) || {strength:'', improvement:''};
@@ -904,7 +1418,13 @@
   }
 
   el('dashBtn').addEventListener('click', enterDashboard);
-  el('againBtn').addEventListener('click', () => showStage('setupStage'));
+  el('againBtn').addEventListener('click', openSetup);
+  el('pdfBtn').addEventListener('click', () => {
+    // The print stylesheet reduces the feedback screen to a clean page; the
+    // browser's print dialog offers "Save as PDF" as the destination.
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    window.print();
+  });
 
   // ---------- INIT ----------
   if(state.token && state.user) enterDashboard();

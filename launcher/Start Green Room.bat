@@ -5,7 +5,7 @@ rem One-click local launcher for The Green Room.
 for %%I in ("%~dp0..") do set "PROJECT_DIR=%%~fI"
 set "BACKEND_DIR=%PROJECT_DIR%\backend"
 set "APP_URL=http://localhost:4000"
-set "APP_VERSION=2026.08.01.3"
+set "APP_VERSION=2026.09.02.5"
 
 where node >nul 2>&1
 if errorlevel 1 (

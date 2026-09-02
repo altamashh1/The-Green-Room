@@ -7,8 +7,74 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-app.use(cors());
+
+// Behind a single reverse proxy on most hosts (Render/Railway/Fly); needed so
+// req.ip reflects the real client for rate limiting.
+app.set('trust proxy', 1);
+
+// Lock CORS to the known frontend origin in production. In local dev (no
+// ALLOWED_ORIGIN set) requests come from the same origin or file/localhost,
+// so reflecting the origin is fine.
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
+app.use(cors(ALLOWED_ORIGIN ? { origin: ALLOWED_ORIGIN } : {}));
+
+// Minimal security headers without pulling in a dependency (keeps the
+// one-click launcher install-free). The CSP allows the inline script/style
+// the single-file frontend uses plus Google Fonts.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'microphone=(self), camera=(), geolocation=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self'",
+      "img-src 'self' data:",
+      "base-uri 'none'",
+      "frame-ancestors 'none'"
+    ].join('; ')
+  );
+  next();
+});
+
 app.use(express.json({ limit: '2mb' }));
+
+// Tiny fixed-window rate limiter (per IP + bucket). Enough to blunt brute-force
+// on auth and to cap spend on the Gemini-backed routes.
+function rateLimit({ windowMs, max, bucket }) {
+  const hits = new Map();
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of hits) {
+      if (entry.resetAt <= now) hits.delete(key);
+    }
+  }, windowMs).unref();
+
+  return (req, res, next) => {
+    const key = `${bucket}:${req.ip}`;
+    const now = Date.now();
+    let entry = hits.get(key);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + windowMs };
+      hits.set(key, entry);
+    }
+    entry.count += 1;
+    if (entry.count > max) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment and try again.' });
+    }
+    next();
+  };
+}
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, bucket: 'auth' });
+const interviewLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, bucket: 'interview' });
 
 // ---------- DATABASE ----------
 const db = new Database(path.join(__dirname, 'greenroom.db'));
@@ -47,22 +113,48 @@ if (!userColumns.some((column) => column.name === 'role')) {
 }
 
 // ---------- CONFIG ----------
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+const JWT_SECRET = process.env.JWT_SECRET || (IS_PRODUCTION ? '' : 'dev-secret-change-me');
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET must be set to a long random string in production.');
+  process.exit(1);
+}
+if (JWT_SECRET === 'dev-secret-change-me') {
+  console.warn('WARNING: using the insecure default JWT_SECRET. Set JWT_SECRET in backend/.env.');
+}
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+if (!GEMINI_API_KEY) {
+  console.warn('WARNING: GEMINI_API_KEY is not set — interview and feedback routes will fail until it is.');
+}
+// The model chain: the first model is tried first, and when it is rate-limited
+// or its quota is exhausted the next one is used, and so on. Set GEMINI_MODEL to
+// a single id or a comma-separated list, and/or add GEMINI_FALLBACK_MODELS.
+const GEMINI_MODELS = [
+  ...String(process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite').split(','),
+  ...String(process.env.GEMINI_FALLBACK_MODELS || 'gemini-2.0-flash-lite,gemini-2.0-flash').split(',')
+]
+  .map((m) => m.trim())
+  .filter(Boolean)
+  .filter((m, i, all) => all.indexOf(m) === i);
+const geminiUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 45_000;
 const GEMINI_MAX_ATTEMPTS = Math.max(1, Number(process.env.GEMINI_MAX_ATTEMPTS) || 3);
-const ADMIN_USERNAME = 'admin';
+
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@greenroom.local').toLowerCase().trim();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
+if (IS_PRODUCTION && ADMIN_PASSWORD === 'admin1234') {
+  console.warn('WARNING: the default admin password is in use. Set ADMIN_PASSWORD in backend/.env.');
+}
 
 // Seed the requested local administrator once. The password is hashed like
 // every other account and is never returned by the API.
-const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_USERNAME);
+const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_EMAIL);
 if (!existingAdmin) {
   const adminHash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
   db.prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)')
-    .run('Administrator', ADMIN_USERNAME, adminHash, 'admin');
+    .run('Administrator', ADMIN_EMAIL, adminHash, 'admin');
   console.log('Default administrator account created.');
 }
 
@@ -118,18 +210,19 @@ function geminiError(status, body) {
   return error;
 }
 
-async function askGemini(promptText) {
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not set on the server');
-
+// Runs the retry loop against a single model. Throws on failure; the error
+// carries `.status` so askGemini() can decide whether to fall back.
+async function askGeminiModel(model, promptText) {
+  const url = geminiUrl(model);
   let lastError;
   for (let attempt = 0; attempt < GEMINI_MAX_ATTEMPTS; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
     let resp;
     try {
-      resp = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
         body: JSON.stringify({
           contents: [{ parts: [{ text: promptText }] }],
           generationConfig: { responseMimeType: 'application/json' }
@@ -180,21 +273,49 @@ async function askGemini(promptText) {
 
   throw lastError || new Error('Gemini request failed');
 }
+
+// Walks the model chain. A 429 (rate limit / quota exhausted), 404 (model not
+// available on this key) or 403 moves on to the next model; anything else is
+// surfaced immediately.
+async function askGemini(promptText) {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not set on the server');
+
+  let lastError;
+  for (let i = 0; i < GEMINI_MODELS.length; i += 1) {
+    const model = GEMINI_MODELS[i];
+    try {
+      return await askGeminiModel(model, promptText);
+    } catch (error) {
+      lastError = error;
+      const canFallBack = [429, 404, 403].includes(error.status) && i < GEMINI_MODELS.length - 1;
+      if (!canFallBack) throw error;
+      console.warn(`Gemini model "${model}" unavailable (${error.status}); falling back to "${GEMINI_MODELS[i + 1]}".`);
+    }
+  }
+  throw lastError || new Error('Gemini request failed');
+}
+
 function parseJsonLoose(text) {
   const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
   return JSON.parse(cleaned);
 }
 
 // ---------- AUTH ROUTES ----------
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   const { name, email, password } = req.body || {};
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'name, email and password are required' });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (typeof password !== 'string' || password.length < 6 || password.length > 200) {
+    return res.status(400).json({ error: 'Password must be between 6 and 200 characters' });
   }
-  const normalizedEmail = email.toLowerCase().trim();
+  if (typeof name !== 'string' || name.trim().length < 1 || name.trim().length > 80) {
+    return res.status(400).json({ error: 'Name must be between 1 and 80 characters' });
+  }
+  const normalizedEmail = String(email).toLowerCase().trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || normalizedEmail.length > 254) {
+    return res.status(400).json({ error: 'Enter a valid email address' });
+  }
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
   if (existing) return res.status(409).json({ error: 'An account with this email already exists' });
 
@@ -206,10 +327,10 @@ app.post('/api/auth/register', async (req, res) => {
   res.json({ token: signToken(user), user });
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
-  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = String(email).toLowerCase().trim();
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(normalizedEmail);
   if (!user) return res.status(401).json({ error: 'Invalid email or password' });
   const match = await bcrypt.compare(password, user.password_hash);
@@ -218,7 +339,9 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/me', authMiddleware, (req, res) => {
-  res.json({ user: req.user });
+  const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.id);
+  if (!user) return res.status(401).json({ error: 'Account no longer exists' });
+  res.json({ user: publicUser(user) });
 });
 
 // ---------- INTERVIEW ROUTES ----------
@@ -229,13 +352,33 @@ function validateSetup({ role, level, numQuestions }) {
   const questionCount = Number(numQuestions);
   if (!role || !level || !numQuestions) return 'role, level and numQuestions are required';
   if (!SUPPORTED_ROLES.has(role)) return 'Choose one of the available roles';
+  if (!Object.prototype.hasOwnProperty.call(LEVEL_LABELS, level)) return 'Choose a valid experience level';
   if (!ALLOWED_QUESTION_COUNTS.has(questionCount)) return 'Choose a 3- or 5-question round';
   return null;
 }
 
+const MAX_TRANSCRIPT_ITEMS = 30;
+const MAX_FIELD_LEN = 5000;
+
+// Coerces the client-supplied transcript into a known-safe shape and bounds its
+// size before it is interpolated into a prompt or stored.
+function sanitizeTranscript(transcript) {
+  if (!Array.isArray(transcript) || transcript.length === 0) return null;
+  if (transcript.length > MAX_TRANSCRIPT_ITEMS) return null;
+  const cleaned = [];
+  for (const entry of transcript) {
+    if (!entry || typeof entry !== 'object') return null;
+    const question = typeof entry.question === 'string' ? entry.question.slice(0, MAX_FIELD_LEN) : '';
+    const answer = typeof entry.answer === 'string' ? entry.answer.slice(0, MAX_FIELD_LEN) : '';
+    if (!question || !answer) return null;
+    cleaned.push({ question, answer, isFollowUp: Boolean(entry.isFollowUp) });
+  }
+  return cleaned;
+}
+
 // Generates only the opening question. The rest of the interview is decided
 // turn-by-turn by /api/interview/next, based on how the candidate answers.
-app.post('/api/interview/start', authMiddleware, async (req, res) => {
+app.post('/api/interview/start', authMiddleware, interviewLimiter, async (req, res) => {
   const { role, level } = req.body || {};
   const validationError = validateSetup(req.body || {});
   if (validationError) return res.status(400).json({ error: validationError });
@@ -258,11 +401,12 @@ app.post('/api/interview/start', authMiddleware, async (req, res) => {
 // Decides the next turn of the interview: either a brief follow-up on the
 // candidate's last answer, or a fresh main question. This is what makes the
 // interview feel live/adaptive instead of a fixed pre-generated list.
-app.post('/api/interview/next', authMiddleware, async (req, res) => {
-  const { role, level, numQuestions, mainQuestionNumber, followUpsUsed, transcript } = req.body || {};
+app.post('/api/interview/next', authMiddleware, interviewLimiter, async (req, res) => {
+  const { role, level, numQuestions, mainQuestionNumber, followUpsUsed } = req.body || {};
   const validationError = validateSetup({ role, level, numQuestions });
   if (validationError) return res.status(400).json({ error: validationError });
-  if (!Array.isArray(transcript) || transcript.length === 0) {
+  const transcript = sanitizeTranscript((req.body || {}).transcript);
+  if (!transcript) {
     return res.status(400).json({ error: 'transcript with at least one answer is required' });
   }
   const total = Number(numQuestions);
@@ -329,13 +473,17 @@ Return ONLY raw JSON (no markdown fences, no preamble) in exactly this shape:
   }
 });
 
-app.post('/api/interview/feedback', authMiddleware, async (req, res) => {
-  const { role, level, transcript } = req.body || {};
-  if (!role || !level || !Array.isArray(transcript) || transcript.length === 0) {
+app.post('/api/interview/feedback', authMiddleware, interviewLimiter, async (req, res) => {
+  const { role, level } = req.body || {};
+  const transcript = sanitizeTranscript((req.body || {}).transcript);
+  if (!role || !level || !transcript) {
     return res.status(400).json({ error: 'role, level and a non-empty transcript are required' });
   }
   if (!SUPPORTED_ROLES.has(role)) {
     return res.status(400).json({ error: 'Choose one of the available roles' });
+  }
+  if (!Object.prototype.hasOwnProperty.call(LEVEL_LABELS, level)) {
+    return res.status(400).json({ error: 'Choose a valid experience level' });
   }
   const levelLabel = LEVEL_LABELS[level] || level;
   const qaBlock = transcript
@@ -357,7 +505,21 @@ The "questions" array must have exactly ${transcript.length} items, in the same 
 
   try {
     const text = await askGemini(prompt);
-    const feedback = parseJsonLoose(text);
+    const raw = parseJsonLoose(text);
+
+    // The model output is untrusted — coerce it into the exact shape the
+    // frontend and database expect.
+    const scoreNum = Math.round(Number(raw && raw.overallScore));
+    const overallScore = Number.isFinite(scoreNum) ? Math.min(10, Math.max(1, scoreNum)) : null;
+    const questions = Array.isArray(raw && raw.questions) ? raw.questions : [];
+    const feedback = {
+      overallScore,
+      overallSummary: typeof raw?.overallSummary === 'string' ? raw.overallSummary.slice(0, MAX_FIELD_LEN) : '',
+      questions: transcript.map((_, i) => ({
+        strength: typeof questions[i]?.strength === 'string' ? questions[i].strength.slice(0, MAX_FIELD_LEN) : '',
+        improvement: typeof questions[i]?.improvement === 'string' ? questions[i].improvement.slice(0, MAX_FIELD_LEN) : ''
+      }))
+    };
 
     const info = db
       .prepare(
@@ -370,8 +532,8 @@ The "questions" array must have exactly ${transcript.length} items, in the same 
         level,
         'standard',
         transcript.length,
-        feedback.overallScore || null,
-        feedback.overallSummary || '',
+        feedback.overallScore,
+        feedback.overallSummary,
         JSON.stringify({ transcript, feedback })
       );
 
@@ -393,13 +555,60 @@ app.get('/api/sessions', authMiddleware, (req, res) => {
 });
 
 app.get('/api/sessions/:id', authMiddleware, (req, res) => {
-  const row = db.prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid session id' });
+  const row = db.prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(id, req.user.id);
   if (!row) return res.status(404).json({ error: 'Session not found' });
   row.transcript_json = JSON.parse(row.transcript_json);
   res.json({ session: row });
 });
 
-const APP_VERSION = '2026.08.01.3';
+// ---------- ADMIN ROUTES ----------
+// Re-checks the role against the database (not just the token) so a demotion
+// takes effect immediately.
+function adminMiddleware(req, res, next) {
+  const row = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id);
+  if (!row || row.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  next();
+}
+
+app.get('/api/admin/overview', authMiddleware, adminMiddleware, (req, res) => {
+  const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+  const sessionCount = db.prepare('SELECT COUNT(*) AS c FROM sessions').get().c;
+  const avg = db.prepare('SELECT AVG(overall_score) AS a FROM sessions WHERE overall_score IS NOT NULL').get().a;
+  const byRole = db
+    .prepare('SELECT role, COUNT(*) AS count, ROUND(AVG(overall_score), 1) AS avgScore FROM sessions GROUP BY role ORDER BY count DESC')
+    .all();
+  const byDay = db
+    .prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM sessions GROUP BY day ORDER BY day DESC LIMIT 14")
+    .all();
+  const recentSessions = db
+    .prepare(
+      `SELECT s.id, s.role, s.level, s.num_questions, s.overall_score, s.created_at, u.email AS user_email
+       FROM sessions s JOIN users u ON u.id = s.user_id
+       ORDER BY s.created_at DESC LIMIT 20`
+    )
+    .all();
+  const recentUsers = db
+    .prepare(
+      `SELECT id, name, email, role, created_at,
+         (SELECT COUNT(*) FROM sessions s WHERE s.user_id = users.id) AS sessions
+       FROM users ORDER BY created_at DESC LIMIT 20`
+    )
+    .all();
+
+  res.json({
+    userCount,
+    sessionCount,
+    avgScore: avg != null ? Number(avg.toFixed(1)) : null,
+    byRole,
+    byDay,
+    recentSessions,
+    recentUsers
+  });
+});
+
+const APP_VERSION = '2026.09.02.5';
 app.get('/api/health', (req, res) => res.json({ ok: true, app: 'green-room', version: APP_VERSION }));
 
 // Serve the browser app from the same local server as the API. This keeps the
@@ -407,5 +616,18 @@ app.get('/api/health', (req, res) => res.json({ ok: true, app: 'green-room', ver
 // the frontend and backend without a second development server.
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
+// Central error handler: turn malformed JSON and unexpected throws into clean
+// JSON responses instead of leaking a stack trace to the client.
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+  console.error(err);
+  res.status(500).json({ error: 'Something went wrong on the server' });
+});
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Green Room is ready at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Green Room is ready at http://localhost:${PORT}`);
+  console.log(`Gemini model chain: ${GEMINI_MODELS.join(' -> ')}`);
+});
