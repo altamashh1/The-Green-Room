@@ -637,6 +637,17 @@
     : ''; // set your deployed backend URL here in production
 
   const el = id => document.getElementById(id);
+
+  // Server timestamps (SQLite CURRENT_TIMESTAMP) are UTC with no zone marker.
+  // Parse them as UTC and render in India Standard Time.
+  function parseServerTs(s){
+    if(!s) return new Date(NaN);
+    const t = String(s).includes('T') ? String(s) : String(s).replace(' ', 'T');
+    return new Date(/([zZ]|[+-]\d\d:?\d\d)$/.test(t) ? t : t + 'Z');
+  }
+  const IST = 'Asia/Kolkata';
+  const fmtDate = s => parseServerTs(s).toLocaleDateString('en-IN', {month:'short', day:'numeric', year:'numeric', timeZone: IST});
+  const fmtDateTime = s => parseServerTs(s).toLocaleString('en-IN', {month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZone: IST});
   const stages = ['landingStage','authStage','dashboardStage','setupStage','interviewStage','feedbackStage','adminStage'];
   function showStage(id){ stages.forEach(s => el(s).classList.toggle('active', s === id)); if(id !== 'interviewStage') window.scrollTo({top:0}); }
 
@@ -791,13 +802,12 @@
       .map(([label, val]) => `<div class="stat"><div class="stat-num">${escapeHtml(String(val))}</div><div class="stat-label">${label}</div></div>`)
       .join('');
 
-    const fmtDate = s => new Date(s).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
     el('adminSessions').innerHTML =
       '<tr><th>ID</th><th>User</th><th>Role</th><th>Level</th><th>Qs</th><th>Score</th><th>Date</th></tr>' +
       d.recentSessions.map(s => `<tr>
         <td>${s.id}</td><td>${escapeHtml(s.user_email)}</td><td>${escapeHtml(s.role)}</td>
         <td>${escapeHtml(s.level)}</td><td>${s.num_questions}</td>
-        <td>${s.overall_score ?? '–'}</td><td>${fmtDate(s.created_at)}</td></tr>`).join('');
+        <td>${s.overall_score ?? '–'}</td><td>${fmtDateTime(s.created_at)}</td></tr>`).join('');
 
     el('adminUsers').innerHTML =
       '<tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Interviews</th><th>Joined</th></tr>' +
@@ -818,7 +828,7 @@
     sessions.forEach(s => {
       const item = document.createElement('div');
       item.className = 'session-item';
-      const date = new Date(s.created_at).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+      const date = fmtDate(s.created_at);
       item.innerHTML = `
         <div>
           <div class="session-role">${escapeHtml(s.role)}</div>
@@ -1515,7 +1525,7 @@
     el('overallSummary').textContent = feedback.overallSummary || 'No summary was returned for this round.';
     const levelText = el('levelSelect').selectedOptions[0] ? el('levelSelect').selectedOptions[0].textContent : state.level;
     el('printHeader').textContent =
-      `The Green Room — ${state.role} (${levelText}) · ${state.answers.length} questions · ${new Date().toLocaleDateString(undefined,{month:'long', day:'numeric', year:'numeric'})}`;
+      `The Green Room — ${state.role} (${levelText}) · ${state.answers.length} questions · ${new Date().toLocaleDateString('en-IN',{month:'long', day:'numeric', year:'numeric', timeZone: IST})}`;
     const wrap = el('qBreakdown'); wrap.innerHTML = '';
     state.answers.forEach((a,i) => {
       const fb = (feedback.questions && feedback.questions[i]) || {strength:'', improvement:''};
