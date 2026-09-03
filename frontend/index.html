@@ -1211,7 +1211,7 @@
   // spoken-sentence test. The interview only starts once we've actually heard the
   // candidate, so a muted or misconfigured mic can't reach the interview screen.
   const micCheck = (function(){
-    let stream = null, audioCtx = null, analyser = null, rafId = null, rec = null, timeoutId = null;
+    let stream = null, audioCtx = null, analyser = null, rafId = null, rec = null, timeoutId = null, settleId = null;
     let sawAudio = false, passed = false, onPassCb = null;
 
     function setStatus(msg, kind){
@@ -1229,7 +1229,8 @@
     function cleanup(){
       if(rafId) cancelAnimationFrame(rafId);
       if(timeoutId) clearTimeout(timeoutId);
-      rafId = timeoutId = null;
+      if(settleId) clearTimeout(settleId);
+      rafId = timeoutId = settleId = null;
       if(rec){ try{ rec.onresult = rec.onerror = rec.onend = null; rec.abort(); }catch(e){} rec = null; }
       if(audioCtx){ try{ audioCtx.close(); }catch(e){} audioCtx = null; }
       if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
@@ -1245,8 +1246,10 @@
     }
 
     function succeed(){
+      if(passed) return;
       passed = true;
       if(timeoutId) clearTimeout(timeoutId);
+      if(settleId) clearTimeout(settleId);
       try{ rec.stop(); }catch(e){}
       cleanup();
       setStatus('Heard you clearly — you may proceed.', 'ok');
@@ -1297,26 +1300,41 @@
         })();
       }catch(e){ /* meter is a nicety; the sentence test still gates */ }
 
-      // spoken-sentence test
+      // spoken-sentence test — let the candidate finish before we call it good
       setStatus('Listening — read the sentence above out loud now.');
       rec = new SpeechRecognitionCtor();
-      rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
+      rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = true;
       let heard = '';
+      const wordCount = () => heard.trim().split(/\s+/).filter(Boolean).length;
       rec.onresult = (e) => {
         heard = '';
-        for(let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript + ' ';
-        if(heard.trim().split(/\s+/).filter(Boolean).length >= 3) succeed();
+        let hasFinal = false;
+        for(let i = 0; i < e.results.length; i++){
+          heard += e.results[i][0].transcript + ' ';
+          if(e.results[i].isFinal) hasFinal = true;
+        }
+        if(wordCount() >= 3){
+          setStatus('Hearing you clearly — keep reading…');
+          // Pass shortly after a final result, or after a pause with no new words,
+          // so the check doesn't cut the candidate off mid-sentence.
+          if(settleId) clearTimeout(settleId);
+          settleId = setTimeout(succeed, hasFinal ? 400 : 1500);
+        }
       };
       rec.onerror = (e) => {
         if(passed) return;
         if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
           setStatus('Microphone access is blocked for speech. Allow it in the address bar, then Retry.', 'err');
           buttons({ retry:true });
+        }else if(e.error === 'no-speech'){
+          failMessage();
+        }else if(wordCount() >= 3){
+          succeed();
         }else{
           failMessage();
         }
       };
-      rec.onend = () => { if(!passed) failMessage(); };
+      rec.onend = () => { if(!passed){ if(wordCount() >= 3) succeed(); else failMessage(); } };
       try{ rec.start(); }catch(e){ failMessage(); }
 
       timeoutId = setTimeout(() => { if(!passed){ try{ rec.stop(); }catch(e){} } }, 15000);
