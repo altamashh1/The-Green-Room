@@ -1551,12 +1551,18 @@
       const item = document.createElement('div');
       item.className = 'qb-item reveal-in';
       item.style.animationDelay = `${120 + i * 90}ms`;
+      const strengthRow = (fb.strength || '').trim()
+        ? `<div class="qb-row"><span class="qb-tag strong">Strength</span><div class="qb-row-text" style="margin-top:8px;">${escapeHtml(fb.strength)}</div></div>`
+        : '';
+      const improveRow = (fb.improvement || '').trim()
+        ? `<div class="qb-row"><span class="qb-tag improve">Sharpen</span><div class="qb-row-text" style="margin-top:8px;">${escapeHtml(fb.improvement)}</div></div>`
+        : '';
       item.innerHTML = `
         <div class="qb-num">Question ${i+1}</div>
         <div class="qb-q">${escapeHtml(a.question)}</div>
         <div class="qb-row"><div class="qb-row-label">Your answer</div><div class="qb-row-text">${escapeHtml(a.answer)}</div></div>
-        <div class="qb-row"><span class="qb-tag strong">Strength</span><div class="qb-row-text" style="margin-top:8px;">${escapeHtml(fb.strength||'')}</div></div>
-        <div class="qb-row"><span class="qb-tag improve">Sharpen</span><div class="qb-row-text" style="margin-top:8px;">${escapeHtml(fb.improvement||'')}</div></div>
+        ${strengthRow}
+        ${improveRow}
       `;
       wrap.appendChild(item);
     });

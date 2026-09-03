@@ -428,6 +428,22 @@ function sanitizeTranscript(transcript) {
   return cleaned;
 }
 
+// True when the "answer" is really just the question echoed back (or nothing
+// substantive). Used to strip any hollow "strength" the model invents for it.
+function isNonAnswer(question, answer) {
+  const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const q = norm(question);
+  const a = norm(answer);
+  if (!a) return true;
+  const aWords = a.split(' ').filter(Boolean);
+  if (aWords.length < 4) return true;
+  if (q.includes(a) || a.includes(q)) return true;
+  // token containment: share of the answer's words that also appear in the question
+  const qSet = new Set(q.split(' ').filter(Boolean));
+  const overlap = aWords.filter((w) => qSet.has(w)).length / aWords.length;
+  return overlap >= 0.8;
+}
+
 // Generates only the opening question. The rest of the interview is decided
 // turn-by-turn by /api/interview/next, based on how the candidate answers.
 app.post('/api/interview/start', authMiddleware, interviewLimiter, async (req, res) => {
@@ -555,10 +571,11 @@ Evaluate their performance. Return ONLY raw JSON (no markdown fences, no preambl
   "overallScore": <integer 1-10>,
   "overallSummary": "<2-3 sentence honest overall assessment, encouraging but candid>",
   "questions": [
-    { "strength": "<one specific concrete thing done well, 1 sentence>", "improvement": "<one specific concrete thing to improve, 1 sentence>" }
+    { "strength": "<one specific concrete thing done well, 1 sentence, or \"\" if there was nothing>", "improvement": "<one specific concrete thing to improve, 1 sentence>" }
   ]
 }
-The "questions" array must have exactly ${transcript.length} items, in the same order as the transcript.`;
+The "questions" array must have exactly ${transcript.length} items, in the same order as the transcript.
+If the candidate did not actually answer a question — they repeated or paraphrased the question back, or said nothing substantive — set that question's "strength" to an empty string "". Do not invent praise such as "you repeated the prompt clearly" or "you kept a professional tone". In that case make "improvement" state plainly that no real answer was given and what the answer needed to contain.`;
 
   try {
     const text = await askGemini(prompt);
@@ -572,10 +589,15 @@ The "questions" array must have exactly ${transcript.length} items, in the same 
     const feedback = {
       overallScore,
       overallSummary: typeof raw?.overallSummary === 'string' ? raw.overallSummary.slice(0, MAX_FIELD_LEN) : '',
-      questions: transcript.map((_, i) => ({
-        strength: typeof questions[i]?.strength === 'string' ? questions[i].strength.slice(0, MAX_FIELD_LEN) : '',
-        improvement: typeof questions[i]?.improvement === 'string' ? questions[i].improvement.slice(0, MAX_FIELD_LEN) : ''
-      }))
+      questions: transcript.map((entry, i) => {
+        let strength = typeof questions[i]?.strength === 'string' ? questions[i].strength.slice(0, MAX_FIELD_LEN) : '';
+        // If they just echoed the question back, drop any praise the model invented.
+        if (isNonAnswer(entry.question, entry.answer)) strength = '';
+        return {
+          strength,
+          improvement: typeof questions[i]?.improvement === 'string' ? questions[i].improvement.slice(0, MAX_FIELD_LEN) : ''
+        };
+      })
     };
 
     const info = await db.run(
