@@ -93,8 +93,9 @@
   .orb{position:relative; width:64px; height:64px; flex-shrink:0;}
   .orb-core{position:absolute; inset:20px; border-radius:50%; background:var(--ink-softer); border:1px solid var(--line-strong); transition:background .2s ease;}
   .orb-ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line-strong); opacity:0;}
-  .orb.ai-speaking .orb-core{background:var(--amber); box-shadow:0 0 18px rgba(232,163,61,.55);}
+  .orb.ai-speaking .orb-core{background:var(--amber); box-shadow:0 0 18px rgba(232,163,61,.55); animation:orbBlink 1s ease-in-out infinite;}
   .orb.ai-speaking .orb-ring{border-color:var(--amber); animation:ripple 1.6s ease-out infinite; opacity:1;}
+  @keyframes orbBlink{0%,100%{opacity:1; box-shadow:0 0 18px rgba(232,163,61,.55);} 50%{opacity:.3; box-shadow:0 0 6px rgba(232,163,61,.25);}}
   .orb.listening .orb-core{background:var(--sage); box-shadow:0 0 18px rgba(124,148,115,.55);}
   .orb.listening .orb-ring{border-color:var(--sage); animation:ripple 1.1s ease-out infinite; opacity:1;}
   @keyframes ripple{0%{transform:scale(.55); opacity:.7;} 100%{transform:scale(1.35); opacity:0;}}
@@ -155,7 +156,7 @@
   .reveal-in{animation:fbReveal .5s ease both;}
   @keyframes fbReveal{from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);}}
   @media (prefers-reduced-motion: reduce){
-    .fb-orb span,.fb-orb::after,.fb-load-bar i,.reveal-in{animation:none;}
+    .fb-orb span,.fb-orb::after,.fb-load-bar i,.reveal-in,.orb.ai-speaking .orb-core{animation:none;}
   }
 
   /* answer box (interview) */
